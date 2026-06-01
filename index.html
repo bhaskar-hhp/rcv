@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RCV — Jio Order Manager</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: #f0f2f5; color: #333; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #1a1a2e; }
+    h2 { font-size: 1.1rem; margin-bottom: 12px; color: #16213e; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    .field { flex: 1; min-width: 180px; }
+    label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px;
+                    font-size: .9rem; outline: none; transition: border .2s; }
+    input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+    button { padding: 8px 20px; border: none; border-radius: 6px; font-size: .9rem; font-weight: 600;
+             cursor: pointer; transition: all .15s; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-outline { background: transparent; color: #2563eb; border: 1px solid #2563eb; }
+    .btn-outline:hover { background: #eff6ff; }
+    .btn-sm { padding: 4px 12px; font-size: .8rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .75rem; font-weight: 600; }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-pending { background: #fef9c3; color: #854d0e; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+    th { color: #666; font-weight: 600; font-size: .75rem; text-transform: uppercase; }
+    tr:hover td { background: #f9fafb; }
+    .msg { padding: 10px 14px; border-radius: 6px; margin-top: 12px; font-size: .85rem; display: none; }
+    .msg.show { display: block; }
+    .msg-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .msg-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb;
+               border-top-color: #2563eb; border-radius: 50%; animation: spin .6s linear infinite;
+               vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab { padding: 8px 18px; border-radius: 6px 6px 0 0; font-size: .85rem; font-weight: 600;
+           cursor: pointer; background: #e5e7eb; color: #666; border: none; }
+    .tab.active { background: #fff; color: #2563eb; box-shadow: 0 -1px 3px rgba(0,0,0,.06); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .setup-grid .full { grid-column: 1 / -1; }
+    code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: .8rem; }
+    @media (max-width: 600px) { .row { flex-direction: column; } .setup-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📦 RCV — Jio Order Manager</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="orders">Orders</button>
+    <button class="tab" data-tab="create">+ Save Order</button>
+    <button class="tab" data-tab="setup">⚙ Setup</button>
+  </div>
+
+  <!-- Tab: Orders -->
+  <div class="tab-pane active" id="tab-orders">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>E-Topup Orders</h2>
+        <div class="row" style="gap:8px">
+          <select id="orderType" style="width:auto">
+            <option value="secondary">Secondary (Push)</option>
+            <option value="primary">Primary (Own)</option>
+          </select>
+          <button class="btn-primary btn-sm" id="refreshBtn" onclick="fetchOrders()">Refresh</button>
+        </div>
+      </div>
+      <div id="ordersWrap"><p style="color:#999">Click Refresh to load orders.</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: Create Order -->
+  <div class="tab-pane" id="tab-create">
+    <div class="card">
+      <h2>Create Push Order</h2>
+      <div class="row">
+        <div class="field">
+          <label>Customer Number</label>
+          <input id="custNum" placeholder="e.g. 663607559" value="663607559">
+        </div>
+        <div class="field">
+          <label>Amount (₹)</label>
+          <input id="orderAmt" type="number" step="0.01" placeholder="100.00">
+        </div>
+        <button class="btn-primary" id="saveBtn" onclick="saveOrder()">Save Order</button>
+      </div>
+      <div id="saveMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Setup -->
+  <div class="tab-pane" id="tab-setup">
+    <div class="card">
+      <h2>Configuration</h2>
+      <div class="setup-grid">
+        <div class="field full">
+          <label>Apps Script Web App URL</label>
+          <input id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        <div class="field full">
+          <label>JIO_COOKIES (paste from browser DevTools → Network → copy Cookie header)</label>
+          <textarea id="jioCookies" rows="3" style="width:100%;padding:8px;border:1px solid #d0d5dd;border-radius:6px;font-size:.85rem;font-family:monospace"></textarea>
+        </div>
+        <div class="field"><label>JIO_USER_ID</label><input id="jioUserId" placeholder="A00660002825"></div>
+        <div class="field"><label>JIO_USERNAME</label><input id="jioUserName" placeholder="Suraj Dhoot"></div>
+        <div class="field full" style="display:flex;gap:8px">
+          <button class="btn-primary" onclick="saveSetup()">Save Config</button>
+          <button class="btn-outline" onclick="sendSetup()">Push to Apps Script</button>
+          <button class="btn-outline" onclick="testConnection()">Test</button>
+        </div>
+      </div>
+      <div id="setupMsg" class="msg"></div>
+      <div id="configStatus" class="msg"></div>
+      <hr style="margin:16px 0">
+      <h3>Deploy Instructions</h3>
+      <ol style="font-size:.85rem;line-height:1.6;padding-left:20px">
+        <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a></li>
+        <li>Create new project → paste <code>AppsScript.gs</code> content</li>
+        <li>Save → Deploy → New deployment → Web app</li>
+        <li>Execute as: <strong>Me</strong>, Who has access: <strong>Anyone</strong></li>
+        <li>Copy the URL → paste in the field above</li>
+        <li>Click <strong>Push to Apps Script</strong> to send JIO_COOKIES</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONFIG_KEY = 'rcv_jio_config';
+const APP_SCRIPT_DEV = 'https://script.google.com/macros/s/AKfycbxDGwci7_oT-1uBSc3lZagUU-km5sFJzoQR8CUxxJbD2HJDxCvyD-Pc1Do4aXYUQsQG/exec';
+
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; } catch { return {}; }
+}
+function saveCfg(c) { localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); }
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const c = loadCfg();
+  const urlEl = document.getElementById('scriptUrl');
+  if (c.scriptUrl) urlEl.value = c.scriptUrl;
+
+  // Try to load config from Apps Script
+  const result = await callScript('getConfig');
+  if (result?.success && result.hasCookies) {
+    document.getElementById('jioUserId').value = result.userId || '';
+    document.getElementById('jioUserName').value = result.userName || '';
+    document.getElementById('configStatus').textContent = '✅ Config loaded (logged in)';
+    document.getElementById('configStatus').className = 'msg show msg-success';
+  } else {
+    document.getElementById('configStatus').textContent = '⚠ No config found. Fill and push config.';
+    document.getElementById('configStatus').className = 'msg show msg-error';
+  }
+
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    });
+  });
+});
+
+function getUrl() {
+  let u = document.getElementById('scriptUrl').value.trim();
+  if (!u) u = APP_SCRIPT_DEV;
+  return u;
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = 'msg show msg-' + type;
+}
+
+async function callScript(action, params) {
+  const url = getUrl();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...params }),
+    });
+    if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+    return await res.json();
+  } catch (e) {
+    // Apps Script may need CORS workaround — try JSONP fallback for GET
+    if (action === 'getOrders' || action === 'getUser') {
+      return new Promise(resolve => {
+        const c = 'callback_' + Date.now();
+        window[c] = data => { delete window[c]; document.body.removeChild(s); resolve(data); };
+        const s = document.createElement('script');
+        s.src = url + '?action=' + action + (params?.type ? '&type=' + params.type : '') + '&callback=' + c;
+        s.onerror = () => { delete window[c]; document.body.removeChild(s);
+          resolve({ success: false, error: 'Network error' }); };
+        document.body.appendChild(s);
+      });
+    }
+    return { success: false, error: e.message };
+  }
+}
+
+// ── Setup ────────────────────────────────────────────────────────────
+function saveSetup() {
+  const c = {
+    scriptUrl: document.getElementById('scriptUrl').value.trim(),
+    jioCookies: document.getElementById('jioCookies').value.trim(),
+    jioUserId: document.getElementById('jioUserId').value.trim(),
+    jioUserName: document.getElementById('jioUserName').value.trim(),
+  };
+  saveCfg(c);
+  showMsg('setupMsg', 'Config saved locally.', 'success');
+}
+
+async function sendSetup() {
+  const c = loadCfg();
+  const result = await callScript('setup', {
+    cookies: c.jioCookies,
+    userId: c.jioUserId,
+    userName: c.jioUserName,
+  });
+  showMsg('setupMsg', result?.success ? '✅ Config pushed to Apps Script' :
+    '⚠ ' + (result?.error || 'Check Apps Script deployment'), result?.success ? 'success' : 'error');
+}
+
+async function testConnection() {
+  showMsg('setupMsg', 'Testing...', 'success');
+  const result = await callScript('getUser');
+  if (result?.success) {
+    showMsg('setupMsg', '✅ Connected as ' + (result.data?.fullName || result.fullName || 'OK'), 'success');
+  } else {
+    showMsg('setupMsg', '⚠ ' + (result?.error || 'No response. Deploy Apps Script first.'), 'error');
+  }
+}
+
+// ── Save Order ───────────────────────────────────────────────────────
+async function saveOrder() {
+  const custNum = document.getElementById('custNum').value.trim();
+  const amount = document.getElementById('orderAmt').value.trim();
+  if (!custNum || !amount) { showMsg('saveMsg', 'Fill both fields.', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
+  showMsg('saveMsg', '', 'success');
+
+  const result = await callScript('saveOrder', { customerNum: custNum, amount });
+  if (result?.success) {
+    showMsg('saveMsg', '✅ Order ' + (result.orderId || '') + ' created!', 'success');
+    document.getElementById('orderAmt').value = '';
+  } else {
+    showMsg('saveMsg', '❌ ' + (result?.error || JSON.stringify(result) || 'Failed'), 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Save Order';
+}
+
+// ── Fetch Orders ─────────────────────────────────────────────────────
+async function fetchOrders() {
+  const type = document.getElementById('orderType').value;
+  const wrap = document.getElementById('ordersWrap');
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...';
+
+  const result = await callScript('getOrders', { type });
+  btn.disabled = false; btn.innerHTML = 'Refresh';
+
+  const orders = result?.data || [];
+  if (!orders.length) {
+    wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No orders found.') + '</p>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Order ID</th><th>Date</th><th>Customer</th><th>City</th><th>Amount</th><th>Status</th>
+  </tr></thead><tbody>`;
+  orders.forEach(o => {
+    const ms = (o.CreationDate || '').replace('/Date(','').replace(')/','');
+    const dt = ms ? new Date(parseInt(ms)).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '-';
+    const amt = '₹ ' + parseFloat(o.TotalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits:2});
+    html += `<tr>
+      <td><strong>${o.OrderNum}</strong></td>
+      <td>${dt}</td>
+      <td>${o.CustName || '-'}</td>
+      <td>${o.City || '-'}</td>
+      <td>${amt}</td>
+      <td><span class="badge badge-success">${o.StatusDesc || 'Completed'}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${orders.length} order(s)</p>`;
+  wrap.innerHTML = html;
+}
+</script>
+</body>
+</html>
