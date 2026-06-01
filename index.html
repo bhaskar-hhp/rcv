@@ -190,7 +190,7 @@ async function callScript(action, params) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({ action, ...params }),
     });
     if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
