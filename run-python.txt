@@ -1,0 +1,6 @@
+python3 jio/fetch_etopup.py --refresh-cookies --sync-gsheet
+
+Your page: https://bhaskar-hhp.github.io/rcv/
+The page auto-loads config from the sheet on open. You should see "✅ Config loaded (logged in)" without filling anything. Try the Orders tab → Refresh.
+When cookies expire, just run here:
+python3 jio/fetch_etopup.py --refresh-cookies --sync-gsheet

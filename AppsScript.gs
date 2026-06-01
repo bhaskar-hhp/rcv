@@ -168,6 +168,14 @@ function doPost(e) {
         result = fetchOrders(data.type || 'secondary');
         break;
 
+      case 'getGstCalc':
+        result = getGstCalcData();
+        break;
+
+      case 'pushRow':
+        result = pushRowFromSheet(data.rowIndex);
+        break;
+
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -225,6 +233,98 @@ function createPushOrder(customerNum, amount) {
     return { success: true, orderId, messages };
   } else {
     return { success: false, error: 'HTTP ' + result.status, data: result.data };
+  }
+}
+
+// ── GST Calc Table (Save Order Page) ─────────────────────────────────
+
+function loadRdsMaster() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return {};
+  const data = sheet.getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[0] && row[1]) {
+      const key = String(row[0]).replace(/\(RCV\)/gi, '').replace(/[,\-]/g, ' ').trim().toLowerCase();
+      map[key] = String(row[1]).trim();
+    }
+  }
+  return map;
+}
+
+function matchCustomer(rdsName, masterMap) {
+  if (!rdsName) return '';
+  const clean = String(rdsName).replace(/\(RCV\)/gi, '').replace(/[,\-]/g, ' ').trim().toLowerCase();
+  // Direct match
+  if (masterMap[clean]) return masterMap[clean];
+  // Partial match: check each key
+  for (const key in masterMap) {
+    if (clean.includes(key) || key.includes(clean)) return masterMap[key];
+  }
+  return '';
+}
+
+function getGstCalcData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const gst = ss.getSheetByName('gst_calc');
+    if (!gst) return { success: false, error: 'gst_calc sheet not found' };
+
+    const masterMap = loadRdsMaster();
+    const rows = gst.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const partner = String(r[2] || '').replace(/\s+$/, '');
+      const customer = matchCustomer(partner, masterMap);
+      result.push({
+        rowIndex: i + 1,
+        date: String(r[0] || ''),
+        orderId: String(r[1] || '').replace(/[^\d]/g, ''),
+        partner: partner,
+        customerNum: customer,
+        basic: String(r[3] || ''),
+        amount: String(r[4] || ''),
+        status: String(r[5] || 'Pending'),
+        closingBal: String(r[6] || ''),
+        remark: String(r[7] || ''),
+        hasOrderId: !!String(r[1] || '').replace(/[^\d]/g, ''),
+      });
+    }
+    return { success: true, count: result.length, data: result };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+function pushRowFromSheet(rowIndex) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const gst = ss.getSheetByName('gst_calc');
+    if (!gst) return { success: false, error: 'gst_calc not found' };
+
+    const row = gst.getRange(rowIndex, 1, 1, 10).getValues()[0];
+    const partner = String(row[2] || '').replace(/\s+$/, '');
+    const masterMap = loadRdsMaster();
+    const customerNum = matchCustomer(partner, masterMap);
+    const amount = String(row[4] || '').replace(/[^\d.]/g, '');
+
+    if (!customerNum) return { success: false, error: 'Customer number not found for ' + partner };
+    if (!amount || parseFloat(amount) <= 0) return { success: false, error: 'Invalid amount: ' + row[4] };
+
+    // Create push order via Jio API
+    const orderResult = createPushOrder(customerNum, amount);
+    if (orderResult.success && orderResult.orderId) {
+      // Update sheet: Order ID (B), Status (F)
+      gst.getRange(rowIndex, 2).setValue(orderResult.orderId);
+      gst.getRange(rowIndex, 6).setValue('Completed');
+      return { success: true, orderId: orderResult.orderId };
+    }
+    return orderResult;
+  } catch (e) {
+    return { success: false, error: e.toString() };
   }
 }
 

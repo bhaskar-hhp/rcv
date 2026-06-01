@@ -82,22 +82,14 @@
     </div>
   </div>
 
-  <!-- Tab: Create Order -->
+  <!-- Tab: Save Order -->
   <div class="tab-pane" id="tab-create">
     <div class="card">
-      <h2>Create Push Order</h2>
-      <div class="row">
-        <div class="field">
-          <label>Customer Number</label>
-          <input id="custNum" placeholder="e.g. 663607559" value="663607559">
-        </div>
-        <div class="field">
-          <label>Amount (₹)</label>
-          <input id="orderAmt" type="number" step="0.01" placeholder="100.00">
-        </div>
-        <button class="btn-primary" id="saveBtn" onclick="saveOrder()">Save Order</button>
+      <div class="row" style="justify-content:space-between">
+        <h2>Push Orders</h2>
+        <button class="btn-primary btn-sm" id="loadGstBtn" onclick="loadGstCalc()">Load Data</button>
       </div>
-      <div id="saveMsg" class="msg"></div>
+      <div id="gstWrap"><p style="color:#999">Click Load Data to fetch from gst_calc.</p></div>
     </div>
   </div>
 
@@ -245,24 +237,60 @@ async function testConnection() {
   }
 }
 
-// ── Save Order ───────────────────────────────────────────────────────
-async function saveOrder() {
-  const custNum = document.getElementById('custNum').value.trim();
-  const amount = document.getElementById('orderAmt').value.trim();
-  if (!custNum || !amount) { showMsg('saveMsg', 'Fill both fields.', 'error'); return; }
+// ── GST Calc Table (Save Order Page) ─────────────────────────────────
+async function loadGstCalc() {
+  const wrap = document.getElementById('gstWrap');
+  const btn = document.getElementById('loadGstBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...';
+  wrap.innerHTML = '';
 
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
-  showMsg('saveMsg', '', 'success');
+  const result = await callScript('getGstCalc');
+  btn.disabled = false; btn.innerHTML = 'Load Data';
 
-  const result = await callScript('saveOrder', { customerNum: custNum, amount });
-  if (result?.success) {
-    showMsg('saveMsg', '✅ Order ' + (result.orderId || '') + ' created!', 'success');
-    document.getElementById('orderAmt').value = '';
-  } else {
-    showMsg('saveMsg', '❌ ' + (result?.error || JSON.stringify(result) || 'Failed'), 'error');
+  const rows = result?.data || [];
+  if (!rows.length) {
+    wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
+    return;
   }
-  btn.disabled = false; btn.textContent = 'Save Order';
+
+  let html = `<div style="overflow-x:auto"><table><thead><tr>
+    <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
+    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Remark</th><th>Status</th><th>Action</th>
+  </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    const amt = parseFloat(r.amount) || 0;
+    const isPending = !r.hasOrderId || r.status === 'Pending';
+    html += `<tr>
+      <td>${r.date}</td>
+      <td>${r.orderId || '-'}</td>
+      <td>${r.partner}</td>
+      <td><code>${r.customerNum || '—'}</code></td>
+      <td>${r.basic}</td>
+      <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+      <td>${r.closingBal}</td>
+      <td>${r.remark || ''}</td>
+      <td><span class="badge ${isPending ? 'badge-pending' : 'badge-success'}">${isPending ? 'Pending' : 'Completed'}</span></td>
+      <td>${isPending ? `<button class="btn-primary btn-sm" onclick="pushRow(${r.rowIndex}, this)">Push</button>` : '—'}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p>`;
+  wrap.innerHTML = html;
+}
+
+async function pushRow(rowIndex, btn) {
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const result = await callScript('pushRow', { rowIndex });
+  if (result?.success) {
+    btn.innerHTML = '✅'; btn.style.background = '#16a34a';
+    // Update row status visually (simple reload after short delay)
+    setTimeout(() => loadGstCalc(), 2000);
+  } else {
+    btn.innerHTML = '❌'; btn.disabled = false;
+    alert('Push failed: ' + (result?.error || 'Unknown'));
+  }
 }
 
 // ── Fetch Orders ─────────────────────────────────────────────────────
