@@ -256,7 +256,7 @@ function fetchOrders(type) {
     userType: 'ZD',
   };
 
-  const qs = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+  const qs = Object.entries(params).map(([k, v]) => k + '=' + v).join('&');
   const path = '/api/dsm-orders/e-topup-orders?' + qs;
 
   const result = jioApi('GET', path, null, fullName, userId);
