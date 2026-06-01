@@ -70,11 +70,23 @@
     <div class="card">
       <h2>Push Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
-        <button class="tab gst-tab" data-filter="all">All</button>
         <button class="tab gst-tab active" data-filter="new">New</button>
         <button class="tab gst-tab" data-filter="pending">Pending</button>
+        <button class="tab gst-tab" data-filter="all">All</button>
       </div>
-      <div id="gstWrap"><p style="color:#999">Loading...</p></div>
+      <div id="newOrderForm" class="row" style="gap:12px">
+        <div class="field">
+          <label>Customer Number</label>
+          <input id="newCustNum" placeholder="e.g. 663607559" value="663607559">
+        </div>
+        <div class="field">
+          <label>Amount (₹)</label>
+          <input id="newOrderAmt" type="number" step="0.01" placeholder="100.00">
+        </div>
+        <button class="btn-primary" id="newOrderBtn" onclick="submitNewOrder()">Submit</button>
+      </div>
+      <div id="newOrderMsg" class="msg"></div>
+      <div id="gstWrap" style="display:none"></div>
     </div>
   </div>
 
@@ -242,13 +254,22 @@ async function testConnection() {
   }
 }
 
-// ── GST Calc Table (Save Order Page) ─────────────────────────────────
+// ── Save Order ──────────────────────────────────────────────────
 let gstAllRows = [];
 let gstLoaded = false;
 
 async function loadGstCalc(filter) {
+  const form = document.getElementById('newOrderForm');
   const wrap = document.getElementById('gstWrap');
-  filter = filter || 'new';
+
+  if (filter === 'new') {
+    form.style.display = 'flex';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  form.style.display = 'none';
+  wrap.style.display = 'block';
 
   if (!gstLoaded) {
     wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
@@ -258,40 +279,30 @@ async function loadGstCalc(filter) {
       wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
       return;
     }
-    gstAllRows.reverse(); // newest first
+    gstAllRows.reverse();
     gstLoaded = true;
   }
 
   renderGstTable(filter);
 }
 
-// Setup sub-tab clicks (once)
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    document.querySelectorAll('.gst-tab').forEach(t => {
-      t.addEventListener('click', () => {
-        document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
-        loadGstCalc(t.dataset.filter);
-      });
-    });
-  }, 100);
-});
-
 function renderGstTable(filter) {
   const wrap = document.getElementById('gstWrap');
   let rows = gstAllRows;
-  if (filter === 'new') rows = rows.filter(r => !r.hasOrderId);
-  else if (filter === 'pending') rows = rows.filter(r => r.hasOrderId && r.status !== 'Completed' && r.status !== 'In Credit');
+  if (filter === 'pending') rows = rows.filter(r => r.hasOrderId && r.status !== 'Completed' && r.status !== 'In Credit');
+
+  if (filter !== 'all' && !rows.length) {
+    wrap.innerHTML = '<p style="color:#999">No pending orders.</p>';
+    return;
+  }
 
   let html = `<div style="overflow-x:auto"><table><thead><tr>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
-    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Remark</th><th>Status</th><th>Action</th>
+    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Remark</th><th>Status</th>
   </tr></thead><tbody>`;
 
   for (const r of rows) {
     const amt = parseFloat(r.amount) || 0;
-    const isPending = !r.hasOrderId || r.status === 'Pending';
     html += `<tr>
       <td>${r.date}</td>
       <td>${r.orderId || '-'}</td>
@@ -301,8 +312,7 @@ function renderGstTable(filter) {
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td>${r.closingBal}</td>
       <td>${r.remark || ''}</td>
-      <td><span class="badge ${isPending ? 'badge-pending' : 'badge-success'}">${isPending ? 'Pending' : 'Completed'}</span></td>
-      <td>${isPending ? `<button class="btn-primary btn-sm" onclick="pushRow(${r.rowIndex}, this)">Push</button>` : '—'}</td>
+      <td><span class="badge ${r.status === 'Completed' || r.status === 'In Credit' ? 'badge-success' : 'badge-pending'}">${r.status}</span></td>
     </tr>`;
   }
 
@@ -311,17 +321,40 @@ function renderGstTable(filter) {
   wrap.innerHTML = html;
 }
 
-async function pushRow(rowIndex, btn) {
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  const result = await callScript('pushRow', { rowIndex });
+// Setup sub-tab clicks
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    document.querySelectorAll('.gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        loadGstCalc(t.dataset.filter);
+      });
+    });
+    // Default: New tab (form visible)
+    document.getElementById('newOrderForm').style.display = 'flex';
+    document.getElementById('gstWrap').style.display = 'none';
+  }, 100);
+});
+
+async function submitNewOrder() {
+  const custNum = document.getElementById('newCustNum').value.trim();
+  const amount = document.getElementById('newOrderAmt').value.trim();
+  if (!custNum || !amount) { showMsg('newOrderMsg', 'Fill both fields.', 'error'); return; }
+
+  const btn = document.getElementById('newOrderBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting...';
+  showMsg('newOrderMsg', '', 'success');
+
+  const result = await callScript('saveOrder', { customerNum: custNum, amount });
   if (result?.success) {
-    btn.innerHTML = '✅'; btn.style.background = '#16a34a';
-    // Update row status visually (simple reload after short delay)
-    setTimeout(() => loadGstCalc(), 2000);
+    showMsg('newOrderMsg', '✅ Order ' + (result.orderId || '') + ' created!', 'success');
+    document.getElementById('newOrderAmt').value = '';
+    gstLoaded = false; // force reload next time
   } else {
-    btn.innerHTML = '❌'; btn.disabled = false;
-    alert('Push failed: ' + (result?.error || 'Unknown'));
+    showMsg('newOrderMsg', '❌ ' + (result?.error || JSON.stringify(result) || 'Failed'), 'error');
   }
+  btn.disabled = false; btn.innerHTML = 'Submit';
 }
 
 // ── Fetch Orders ─────────────────────────────────────────────────────
