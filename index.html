@@ -89,6 +89,11 @@
         <h2>Push Orders</h2>
         <button class="btn-primary btn-sm" id="loadGstBtn" onclick="loadGstCalc()">Load Data</button>
       </div>
+      <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
+        <button class="tab gst-tab active" data-filter="all">All</button>
+        <button class="tab gst-tab" data-filter="new">New</button>
+        <button class="tab gst-tab" data-filter="pending">Pending</button>
+      </div>
       <div id="gstWrap"><p style="color:#999">Click Load Data to fetch from gst_calc.</p></div>
     </div>
   </div>
@@ -238,6 +243,8 @@ async function testConnection() {
 }
 
 // ── GST Calc Table (Save Order Page) ─────────────────────────────────
+let gstAllRows = [];
+
 async function loadGstCalc() {
   const wrap = document.getElementById('gstWrap');
   const btn = document.getElementById('loadGstBtn');
@@ -247,18 +254,37 @@ async function loadGstCalc() {
   const result = await callScript('getGstCalc');
   btn.disabled = false; btn.innerHTML = 'Load Data';
 
-  const rows = result?.data || [];
-  if (!rows.length) {
+  gstAllRows = result?.data || [];
+  if (!gstAllRows.length) {
     wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
     return;
   }
+  gstAllRows.reverse(); // newest first
+
+  // Setup sub-tabs
+  document.querySelectorAll('.gst-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderGstTable(t.dataset.filter);
+    });
+  });
+
+  renderGstTable('all');
+}
+
+function renderGstTable(filter) {
+  const wrap = document.getElementById('gstWrap');
+  let rows = gstAllRows;
+  if (filter === 'new') rows = rows.filter(r => !r.hasOrderId);
+  else if (filter === 'pending') rows = rows.filter(r => r.hasOrderId && r.status !== 'Completed' && r.status !== 'In Credit');
 
   let html = `<div style="overflow-x:auto"><table><thead><tr>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
     <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Remark</th><th>Status</th><th>Action</th>
   </tr></thead><tbody>`;
 
-  for (const r of rows.slice().reverse()) {
+  for (const r of rows) {
     const amt = parseFloat(r.amount) || 0;
     const isPending = !r.hasOrderId || r.status === 'Pending';
     html += `<tr>
