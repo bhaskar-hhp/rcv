@@ -60,13 +60,26 @@
   <h1>📦 RCV — Jio Order Manager</h1>
 
   <div class="tabs">
-    <button class="tab active" data-tab="orders">Orders</button>
-    <button class="tab" data-tab="create">+ Save Order</button>
+    <button class="tab active" data-tab="create">Save Order</button>
+    <button class="tab" data-tab="orders">Orders</button>
     <button class="tab" data-tab="setup">⚙ Setup</button>
   </div>
 
+  <!-- Tab: Save Order -->
+  <div class="tab-pane active" id="tab-create">
+    <div class="card">
+      <h2>Push Orders</h2>
+      <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
+        <button class="tab gst-tab" data-filter="all">All</button>
+        <button class="tab gst-tab active" data-filter="new">New</button>
+        <button class="tab gst-tab" data-filter="pending">Pending</button>
+      </div>
+      <div id="gstWrap"><p style="color:#999">Loading...</p></div>
+    </div>
+  </div>
+
   <!-- Tab: Orders -->
-  <div class="tab-pane active" id="tab-orders">
+  <div class="tab-pane" id="tab-orders">
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h2>E-Topup Orders</h2>
@@ -79,19 +92,6 @@
         </div>
       </div>
       <div id="ordersWrap"><p style="color:#999">Click Refresh to load orders.</p></div>
-    </div>
-  </div>
-
-  <!-- Tab: Save Order -->
-  <div class="tab-pane" id="tab-create">
-    <div class="card">
-      <h2>Push Orders</h2>
-      <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
-        <button class="tab gst-tab" data-filter="all">All</button>
-        <button class="tab gst-tab active" data-filter="new">New</button>
-        <button class="tab gst-tab" data-filter="pending">Pending</button>
-      </div>
-      <div id="gstWrap"><p style="color:#999">Loading...</p></div>
     </div>
   </div>
 
