@@ -85,16 +85,13 @@
   <!-- Tab: Save Order -->
   <div class="tab-pane" id="tab-create">
     <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <h2>Push Orders</h2>
-        <button class="btn-primary btn-sm" id="loadGstBtn" onclick="loadGstCalc()">Load Data</button>
-      </div>
+      <h2>Push Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
-        <button class="tab gst-tab active" data-filter="all">All</button>
-        <button class="tab gst-tab" data-filter="new">New</button>
+        <button class="tab gst-tab" data-filter="all">All</button>
+        <button class="tab gst-tab active" data-filter="new">New</button>
         <button class="tab gst-tab" data-filter="pending">Pending</button>
       </div>
-      <div id="gstWrap"><p style="color:#999">Click Load Data to fetch from gst_calc.</p></div>
+      <div id="gstWrap"><p style="color:#999">Loading...</p></div>
     </div>
   </div>
 
@@ -165,9 +162,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     t.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
-    });
+    t.classList.add('active');
+    const pane = document.getElementById('tab-' + t.dataset.tab);
+    pane.classList.add('active');
+    // Auto-load Save Order data when tab is clicked
+    if (t.dataset.tab === 'create') loadGstCalc();
+  });
   });
 });
 
@@ -244,34 +244,39 @@ async function testConnection() {
 
 // ── GST Calc Table (Save Order Page) ─────────────────────────────────
 let gstAllRows = [];
+let gstLoaded = false;
 
-async function loadGstCalc() {
+async function loadGstCalc(filter) {
   const wrap = document.getElementById('gstWrap');
-  const btn = document.getElementById('loadGstBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...';
-  wrap.innerHTML = '';
+  filter = filter || 'new';
 
-  const result = await callScript('getGstCalc');
-  btn.disabled = false; btn.innerHTML = 'Load Data';
-
-  gstAllRows = result?.data || [];
-  if (!gstAllRows.length) {
-    wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
-    return;
+  if (!gstLoaded) {
+    wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
+    const result = await callScript('getGstCalc');
+    gstAllRows = result?.data || [];
+    if (!gstAllRows.length) {
+      wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
+      return;
+    }
+    gstAllRows.reverse(); // newest first
+    gstLoaded = true;
   }
-  gstAllRows.reverse(); // newest first
 
-  // Setup sub-tabs
-  document.querySelectorAll('.gst-tab').forEach(t => {
-    t.addEventListener('click', () => {
-      document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      renderGstTable(t.dataset.filter);
-    });
-  });
-
-  renderGstTable('all');
+  renderGstTable(filter);
 }
+
+// Setup sub-tab clicks (once)
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    document.querySelectorAll('.gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        loadGstCalc(t.dataset.filter);
+      });
+    });
+  }, 100);
+});
 
 function renderGstTable(filter) {
   const wrap = document.getElementById('gstWrap');
