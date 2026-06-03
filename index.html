@@ -580,7 +580,7 @@ async function renderPartnerBalance(wrap) {
   }
   const rows = result.data || [];
   let html = '<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn-primary" onclick="addRdsRow()">+ Add Row</button></div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>A</th><th>B</th><th>C</th><th style="width:60px">Action</th></tr></thead><tbody>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th>Patnar</th><th>ID</th><th>Balance</th><th style="width:60px">Action</th></tr></thead><tbody>';
   if (!rows.length) {
     html += '<tr><td colspan="4" style="text-align:center;color:#999">No rows</td></tr>';
   } else {
