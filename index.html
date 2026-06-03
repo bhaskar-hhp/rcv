@@ -691,7 +691,7 @@ function renderGstTable(filter, tallyMap) {
     const isInCredit = r.status === 'In Credit';
     const balStr = isInCredit ? lookupTallyBalance(r.partner, tallyMap) : null;
     const balVal = parseFloat((balStr || '').replace(/,/g, ''));
-    const balColor = balVal > 0 ? '#eab308' : balVal === 0 ? '#22c55e' : '#ef4444';
+    const balColor = balVal > 0 ? '#16a34a' : balVal < 0 ? '#ef4444' : '#64748b';
     const balDisplay = (!isInCredit || isNaN(balVal)) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
     const checked = selectedRows.has(r.rowIndex) ? 'checked' : '';
     html += `<tr>
@@ -702,7 +702,7 @@ function renderGstTable(filter, tallyMap) {
       <td><code>${r.customerNum || '—'}</code></td>
       <td>${r.basic}</td>
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-      <td style="${(() => { const v = parseFloat(r.closingBal); return !isNaN(v) && v > 0 ? 'color:#16a34a;font-weight:600' : ''; })()}">${r.closingBal}</td>
+      <td>${r.closingBal}</td>
       <td>${balDisplay}</td>
       <td>${isCompleted ? (r.remark || '') : '<input type="text" value="' + (r.remark || '') + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem" onchange="updateRemark(' + r.rowIndex + ', this.value)">'}</td>
       <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
