@@ -222,6 +222,10 @@ function doPost(e) {
         result = getPrimaryValue();
         break;
 
+      case 'getRdsData':
+        result = getRdsMasterData();
+        break;
+
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -509,6 +513,17 @@ function getPrimaryValue() {
   if (!sheet) return { success: false, error: 'rds_master not found' };
   const val = sheet.getRange('F1').getValue();
   return { success: true, primary: String(val) };
+}
+
+function getRdsMasterData() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return { success: false, error: 'rds_master not found' };
+  const rows = sheet.getDataRange().getValues();
+  const data = [];
+  for (let i = 1; i < rows.length; i++) {
+    data.push({ a: String(rows[i][0] || ''), b: String(rows[i][1] || ''), c: String(rows[i][2] || '') });
+  }
+  return { success: true, data };
 }
 
 function updateOrderIdInSheet(rowIndex, orderId) {

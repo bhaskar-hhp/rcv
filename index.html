@@ -131,6 +131,7 @@
       <h2>Push Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
         <button class="gst-tab active" data-filter="new">New</button>
+        <button class="gst-tab" data-filter="partner_balance">Partner Balance</button>
         <button class="gst-tab" data-filter="pending">Pending</button>
         <button class="gst-tab" data-filter="all">All</button>
       </div>
@@ -536,6 +537,25 @@ async function loadGstCalc(filter) {
     loadRetailers();
     loadClosingBalance();
     if (!newRows.length) addNewRow();
+    return;
+  }
+
+  if (filter === 'partner_balance') {
+    form.style.display = 'none';
+    wrap.style.display = 'block';
+    loadClosingBalance();
+    wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
+    const result = await callScript('getRdsData');
+    if (!result?.success || !result.data?.length) {
+      wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
+      return;
+    }
+    let html = '<div style="overflow-x:auto"><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>';
+    for (const r of result.data) {
+      html += `<tr><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
     return;
   }
 
