@@ -544,18 +544,7 @@ async function loadGstCalc(filter) {
     form.style.display = 'none';
     wrap.style.display = 'block';
     loadClosingBalance();
-    wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
-    const result = await callScript('getRdsData');
-    if (!result?.success || !result.data?.length) {
-      wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
-      return;
-    }
-    let html = '<div style="overflow-x:auto"><table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead><tbody>';
-    for (const r of result.data) {
-      html += `<tr><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td></tr>`;
-    }
-    html += '</tbody></table></div>';
-    wrap.innerHTML = html;
+    await renderPartnerBalance(wrap);
     return;
   }
 
@@ -580,6 +569,40 @@ async function loadGstCalc(filter) {
   }
 
   renderGstTable(filter, tallyData);
+}
+
+async function renderPartnerBalance(wrap) {
+  wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
+  const result = await callScript('getRdsData');
+  if (!result?.success) {
+    wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'Failed to load') + '</p>';
+    return;
+  }
+  const rows = result.data || [];
+  let html = '<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn-primary" onclick="addRdsRow()">+ Add Row</button></div>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th>A</th><th>B</th><th>C</th><th style="width:60px">Action</th></tr></thead><tbody>';
+  if (!rows.length) {
+    html += '<tr><td colspan="4" style="text-align:center;color:#999">No rows</td></tr>';
+  } else {
+    for (const r of rows) {
+      html += `<tr><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td><td><button class="btn-sm btn-outline" onclick="deleteRdsRow(${r.rowIndex})" style="color:#dc2626;border-color:#dc2626">Delete</button></td></tr>`;
+    }
+  }
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+async function addRdsRow() {
+  await callScript('addRdsRow');
+  const wrap = document.getElementById('gstWrap');
+  renderPartnerBalance(wrap);
+}
+
+async function deleteRdsRow(rowIndex) {
+  if (!confirm('Delete this row?')) return;
+  await callScript('deleteRdsRow', { rowIndex });
+  const wrap = document.getElementById('gstWrap');
+  renderPartnerBalance(wrap);
 }
 
 function lookupTallyBalance(partnerName, tallyMap) {

@@ -226,6 +226,14 @@ function doPost(e) {
         result = getRdsMasterData();
         break;
 
+      case 'addRdsRow':
+        result = addRdsRowToSheet();
+        break;
+
+      case 'deleteRdsRow':
+        result = deleteRdsRowFromSheet(data.rowIndex);
+        break;
+
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -521,9 +529,23 @@ function getRdsMasterData() {
   const rows = sheet.getDataRange().getValues();
   const data = [];
   for (let i = 1; i < rows.length; i++) {
-    data.push({ a: String(rows[i][0] || ''), b: String(rows[i][1] || ''), c: String(rows[i][2] || '') });
+    data.push({ rowIndex: i + 1, a: String(rows[i][0] || ''), b: String(rows[i][1] || ''), c: String(rows[i][2] || '') });
   }
   return { success: true, data };
+}
+
+function addRdsRowToSheet() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return { success: false, error: 'rds_master not found' };
+  sheet.appendRow(['', '', '']);
+  return { success: true };
+}
+
+function deleteRdsRowFromSheet(rowIndex) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return { success: false, error: 'rds_master not found' };
+  sheet.deleteRow(rowIndex);
+  return { success: true };
 }
 
 function updateOrderIdInSheet(rowIndex, orderId) {
