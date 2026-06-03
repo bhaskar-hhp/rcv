@@ -601,11 +601,10 @@ async function batchComplete() {
 
 async function batchDelete() {
   if (!selectedRows.size) return;
-  const reverse = confirm(`Reverse balance for ${selectedRows.size} deleted row(s)?`);
-  for (const idx of selectedRows) {
-    const row = gstAllRows.find(r => r.rowIndex === idx);
-    if (!row) continue;
-    await callScript('deleteRow', { rowIndex: idx, amount: row.amount, partner: row.partner, reverse });
+  if (!confirm(`Delete ${selectedRows.size} row(s)?`)) return;
+  const idxs = [...selectedRows].sort((a, b) => b - a);
+  for (const idx of idxs) {
+    await callScript('deleteRow', { rowIndex: idx });
   }
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
@@ -685,11 +684,8 @@ async function completeGstRow(rowIndex) {
 }
 
 async function deleteGstRow(rowIndex) {
-  const row = gstAllRows.find(r => r.rowIndex === rowIndex);
-  if (!row) return;
   if (!confirm('Delete this row?')) return;
-  const reverse = confirm('Reverse the balance transaction?');
-  const result = await callScript('deleteRow', { rowIndex, amount: row.amount, partner: row.partner, reverse });
+  const result = await callScript('deleteRow', { rowIndex });
   if (result?.success) {
     gstLoaded = false;
     loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');

@@ -437,12 +437,43 @@ function fetchOrders(type) {
 }
 
 // ── Add Credit Row to gst_calc ────────────────────────────────────
+function getLastClosingBalance() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return 0;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const val = sheet.getRange(lastRow, 7).getValue();
+  return parseFloat(val) || 0;
+}
+
+function recalculateBalances() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return 0;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+
+  const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+  const balances = [];
+  let balance = 0;
+
+  for (const row of data) {
+    const amount = parseFloat(row[5]) || 0;
+    const partner = String(row[2] || '').trim().toUpperCase();
+    balance = partner === 'SELF' ? balance + amount : balance - amount;
+    balances.push([balance]);
+  }
+
+  sheet.getRange(2, 7, balances.length, 1).setValues(balances);
+  setConfig('BALANCE', String(balance));
+  return balance;
+}
+
 function addGstCalcRow(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('gst_calc');
   if (!sheet) return { success: false, error: 'gst_calc not found' };
 
-  const prevBalance = parseFloat(getConfig('BALANCE')) || 0;
+  const prevBalance = getLastClosingBalance();
   const amount = parseFloat(data.amount) || 0;
   const newBalance = data.isAddFund
     ? prevBalance + amount
@@ -466,7 +497,7 @@ function addGstCalcRow(data) {
 }
 
 function getClosingBalance() {
-  return { success: true, closingBal: parseFloat(getConfig('BALANCE')) || 0 };
+  return { success: true, closingBal: getLastClosingBalance() };
 }
 
 function updateOrderIdInSheet(rowIndex, orderId) {
@@ -512,20 +543,10 @@ function updateRemarkInSheet(rowIndex, remark) {
 }
 
 function deleteRowFromSheet(data) {
-  const rowIndex = data.rowIndex;
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
   if (!sheet) return { success: false, error: 'gst_calc not found' };
 
-  if (data.reverse) {
-    const amount = parseFloat(data.amount) || 0;
-    const isAddFund = String(data.partner || '').trim().toUpperCase() === 'SELF';
-    const prevBalance = parseFloat(getConfig('BALANCE')) || 0;
-    const newBalance = isAddFund ? prevBalance - amount : prevBalance + amount;
-    setConfig('BALANCE', String(newBalance));
-    sheet.deleteRow(rowIndex);
-    return { success: true, closingBal: newBalance };
-  }
-
-  sheet.deleteRow(rowIndex);
-  return { success: true };
+  sheet.deleteRow(data.rowIndex);
+  const closingBal = recalculateBalances();
+  return { success: true, closingBal };
 }
