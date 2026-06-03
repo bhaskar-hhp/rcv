@@ -537,7 +537,12 @@ function getRdsMasterData() {
 function addRdsRowToSheet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
   if (!sheet) return { success: false, error: 'rds_master not found' };
-  sheet.appendRow(['', '', '']);
+  const lastRow = sheet.getLastRow();
+  let formula = '';
+  if (lastRow >= 2) {
+    formula = sheet.getRange(lastRow, 3).getFormula();
+  }
+  sheet.appendRow(['', '', formula || '']);
   return { success: true };
 }
 
