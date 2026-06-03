@@ -110,7 +110,7 @@
     </div>
     <div id="hdrStats" style="display:flex;flex-direction:column;align-items:flex-end;font-size:.7rem;color:#1e40af;margin-right:4px;white-space:nowrap;line-height:1.4">
       <span>Balance: <strong id="hdrBalance">—</strong></span>
-      <span>Primary: <strong id="hdrPrimary">—</strong></span>
+      <span style="display:flex;align-items:center;gap:4px">Primary: <strong id="hdrPrimary">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
     </div>
     <div class="menu-wrapper">
       <button class="hamburger" id="menuToggle" onclick="toggleMenu()">
