@@ -346,8 +346,8 @@ async function sendSetup() {
     otherMult: c.otherMult,
     balance: c.setupBalance,
   });
-  showMsg('setupMsg', result?.success ? '✅ Config pushed to Apps Script' :
-    '⚠ ' + (result?.error || 'Check Apps Script deployment'), result?.success ? 'success' : 'error');
+  showMsg('setupMsg', result?.success ? '✅ Config pushed to Apps Script' : '⚠ ' + (result?.error || 'Check Apps Script deployment'), result?.success ? 'success' : 'error');
+  if (result?.success) loadClosingBalance();
 }
 
 async function testConnection() {

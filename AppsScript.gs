@@ -501,7 +501,7 @@ function addGstCalcRow(data) {
 }
 
 function getClosingBalance() {
-  return { success: true, closingBal: getLastClosingBalance() };
+  return { success: true, closingBal: parseFloat(getConfig('BALANCE')) || getLastClosingBalance() };
 }
 
 function getPrimaryValue() {
