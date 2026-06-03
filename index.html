@@ -7,85 +7,144 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-           background: #f0f2f5; color: #333; padding: 20px; }
+           background: linear-gradient(135deg, #f5f7fa 0%, #eef2f6 100%);
+           color: #1e293b; padding: 24px; min-height: 100vh; }
     .container { max-width: 1400px; margin: 0 auto; }
-    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #1a1a2e; }
-    h2 { font-size: 1.1rem; margin-bottom: 12px; color: #16213e; }
-    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #0f172a; font-weight: 700;
+         letter-spacing: -.02em; }
+    h2 { font-size: 1.1rem; margin-bottom: 12px; color: #1e293b; font-weight: 600; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06);
+            border: 1px solid rgba(226,232,240,.6); }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
     .field { flex: 1; min-width: 180px; }
-    label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: 4px; }
-    input, select { width: 100%; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px;
-                    font-size: .9rem; outline: none; transition: border .2s; }
-    input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
-    button { padding: 8px 20px; border: none; border-radius: 6px; font-size: .9rem; font-weight: 600;
-             cursor: pointer; transition: all .15s; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-primary:hover { background: #1d4ed8; }
-    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-outline { background: transparent; color: #2563eb; border: 1px solid #2563eb; }
-    .btn-outline:hover { background: #eff6ff; }
-    .btn-sm { padding: 4px 12px; font-size: .8rem; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .75rem; font-weight: 600; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: #64748b; margin-bottom: 4px;
+            text-transform: uppercase; letter-spacing: .04em; }
+    input, select { width: 100%; padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+                    font-size: .9rem; outline: none; transition: all .2s;
+                    background: #f8fafc; color: #1e293b; }
+    input:hover, select:hover { border-color: #cbd5e1; }
+    input:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+                                 background: #fff; }
+    button { padding: 9px 22px; border: none; border-radius: 8px; font-size: .875rem; font-weight: 600;
+             cursor: pointer; transition: all .2s; letter-spacing: .01em; }
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+                   box-shadow: 0 1px 3px rgba(99,102,241,.3); }
+    .btn-primary:hover { background: linear-gradient(135deg, #4f46e5, #4338ca);
+                         box-shadow: 0 2px 8px rgba(99,102,241,.4); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-outline { background: transparent; color: #6366f1; border: 1px solid #6366f1; }
+    .btn-outline:hover { background: #eef2ff; border-color: #4f46e5; }
+    .btn-sm { padding: 5px 14px; font-size: .8rem; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .75rem;
+             font-weight: 600; letter-spacing: .01em; }
     .badge-success { background: #dcfce7; color: #166534; }
     .badge-error { background: #fee2e2; color: #991b1b; }
     .badge-pending { background: #fef9c3; color: #854d0e; }
-    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
-    th { color: #666; font-weight: 600; font-size: .75rem; text-transform: uppercase; }
-    tr:hover td { background: #f9fafb; }
-    .msg { padding: 10px 14px; border-radius: 6px; margin-top: 12px; font-size: .85rem; display: none; }
+    table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    th { color: #64748b; font-weight: 600; font-size: .7rem; text-transform: uppercase;
+         letter-spacing: .04em; background: #f8fafc; }
+    tr:hover td { background: #f8fafc; }
+    .msg { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: .85rem; display: none; }
     .msg.show { display: block; }
     .msg-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .msg-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb;
-               border-top-color: #2563eb; border-radius: 50%; animation: spin .6s linear infinite;
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e2e8f0;
+               border-top-color: #6366f1; border-radius: 50%; animation: spin .6s linear infinite;
                vertical-align: middle; margin-right: 6px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
-    .tab { padding: 8px 18px; border-radius: 6px 6px 0 0; font-size: .85rem; font-weight: 600;
-           cursor: pointer; background: #e5e7eb; color: #666; border: none; }
-    .tab.active { background: #fff; color: #2563eb; box-shadow: 0 -1px 3px rgba(0,0,0,.06); }
+    .gst-tab { padding: 9px 20px; border-radius: 8px 8px 0 0; font-size: .85rem; font-weight: 600;
+               cursor: pointer; background: #e2e8f0; color: #64748b; border: none;
+               transition: all .2s; }
+    .gst-tab:hover { background: #cbd5e1; color: #334155; }
+    .gst-tab.active { background: #fff; color: #6366f1; box-shadow: 0 -1px 3px rgba(0,0,0,.04); }
+    .hamburger { background: none; border: none; cursor: pointer; padding: 6px; display: flex;
+                 flex-direction: column; gap: 4px; margin-left: auto; }
+    .hamburger span { display: block; width: 20px; height: 2px; background: #475569;
+                      border-radius: 2px; transition: all .25s; }
+    .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+    .menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9;
+                    display: none; }
+    .menu-overlay.show { display: block; }
+    .menu-dropdown { position: absolute; top: 100%; right: 0; background: #fff;
+                     border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+                     border: 1px solid #e2e8f0; min-width: 180px; display: none;
+                     z-index: 10; overflow: hidden; margin-top: 4px; }
+    .menu-dropdown.show { display: block; }
+    .menu-item { display: block; width: 100%; text-align: left; padding: 12px 18px;
+                 background: none; border: none; font-size: .85rem; font-weight: 500;
+                 color: #334155; cursor: pointer; transition: all .15s;
+                 border-radius: 0; }
+    .menu-item:hover { background: #f1f5f9; color: #6366f1; }
+    .menu-item.active { background: #eef2ff; color: #4f46e5; font-weight: 600; }
+    .menu-wrapper { position: relative; }
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
     .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .setup-grid .full { grid-column: 1 / -1; }
-    code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: .8rem; }
-    @media (max-width: 600px) { .row { flex-direction: column; } .setup-grid { grid-template-columns: 1fr; } }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: .8rem; color: #475569; }
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+    @media (max-width: 600px) { body { padding: 16px; } .row { flex-direction: column; }
+                                .setup-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>📦 RCV — Jio Order Manager</h1>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="create">Save Order</button>
-    <button class="tab" data-tab="orders">Orders</button>
-    <button class="tab" data-tab="setup">⚙ Setup</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:#AFBDE0;padding:14px 20px;border-radius:12px">
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="8" fill="url(#logo-gradient)"/>
+      <path d="M10 26V10h6.5a5 5 0 0 1 4.6 2.8 5 5 0 0 1-4.6 7.2H14l4 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <defs>
+        <linearGradient id="logo-gradient" x1="0" y1="0" x2="36" y2="36">
+          <stop stop-color="#6366f1"/>
+          <stop offset="1" stop-color="#4f46e5"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div style="flex:1">
+      <h1 style="font-size:1.5rem;color:#0f172a;font-weight:700;letter-spacing:-.02em;margin:0">RCV</h1>
+      <p style="font-size:.75rem;color:#64748b;margin:0;margin-top:-2px">Jio Order Manager</p>
+    </div>
+    <div class="menu-wrapper">
+      <button class="hamburger" id="menuToggle" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="menu-dropdown" id="menuDropdown">
+        <button class="menu-item active" data-tab="create">Save Order</button>
+        <button class="menu-item" data-tab="orders">Orders</button>
+        <button class="menu-item" data-tab="setup">⚙ Setup</button>
+      </div>
+    </div>
   </div>
+  <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
 
   <!-- Tab: Save Order -->
   <div class="tab-pane active" id="tab-create">
     <div class="card">
       <h2>Push Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
-        <button class="tab gst-tab active" data-filter="new">New</button>
-        <button class="tab gst-tab" data-filter="pending">Pending</button>
-        <button class="tab gst-tab" data-filter="all">All</button>
+        <button class="gst-tab active" data-filter="new">New</button>
+        <button class="gst-tab" data-filter="pending">Pending</button>
+        <button class="gst-tab" data-filter="all">All</button>
       </div>
-      <div id="newOrderForm" class="row" style="gap:12px">
-        <div class="field">
-          <label>Customer Number</label>
-          <input id="newCustNum" placeholder="e.g. 663607559" value="663607559">
+      <div id="newOrderForm" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="batchSubmitNew()">Submit Selected</button>
+          <button class="btn-sm btn-outline" onclick="batchPushNew()" style="color:#7c3aed;border-color:#7c3aed">Push Selected</button>
+          <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="newSelCount">0</span> selected</span>
+          <button class="btn-sm btn-outline" onclick="addNewRow()" style="margin-left:auto">+ Add Row</button>
         </div>
-        <div class="field">
-          <label>Amount (₹)</label>
-          <input id="newOrderAmt" type="number" step="0.01" placeholder="100.00">
-        </div>
-        <button class="btn-primary" id="newOrderBtn" onclick="submitNewOrder()">Submit</button>
+        <div id="balDisplay" style="font-size:.8rem;color:#475569"></div>
+        <div id="newOrderMsg" class="msg"></div>
+        <div style="overflow-x:auto"><table><thead><tr>
+          <th style="width:32px"><input type="checkbox" onchange="toggleAllNew(this.checked)"></th>
+          <th>Retailer</th><th>Customer #</th><th>Basic (₹)</th><th>Amount (₹)</th><th>Order ID</th>
+          <th style="text-align:center">Actions</th>
+        </tr></thead><tbody id="newRowsBody"></tbody></table></div>
       </div>
-      <div id="newOrderMsg" class="msg"></div>
       <div id="gstWrap" style="display:none"></div>
     </div>
   </div>
@@ -122,6 +181,9 @@
         </div>
         <div class="field"><label>JIO_USER_ID</label><input id="jioUserId" placeholder="A00660002825"></div>
         <div class="field"><label>JIO_USERNAME</label><input id="jioUserName" placeholder="Suraj Dhoot"></div>
+        <div class="field"><label>Add Fund Multiplier</label><input id="addFundMult" type="number" step="0.0001" value="1.0435" placeholder="1.0435"></div>
+        <div class="field"><label>Other Multiplier</label><input id="otherMult" type="number" step="0.0001" value="1.042" placeholder="1.042"></div>
+        <div class="field"><label>Balance (₹)</label><input id="setupBalance" type="number" step="0.01" placeholder="0.00"></div>
         <div class="field full" style="display:flex;gap:8px">
           <button class="btn-primary" onclick="saveSetup()">Save Config</button>
           <button class="btn-outline" onclick="sendSetup()">Push to Apps Script</button>
@@ -153,33 +215,68 @@ function loadCfg() {
 }
 function saveCfg(c) { localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); }
 
-document.addEventListener('DOMContentLoaded', async () => {
+function toggleMenu() {
+  document.getElementById('menuToggle').classList.toggle('open');
+  document.getElementById('menuDropdown').classList.toggle('show');
+  document.getElementById('menuOverlay').classList.toggle('show');
+}
+
+function closeMenu() {
+  document.getElementById('menuToggle').classList.remove('open');
+  document.getElementById('menuDropdown').classList.remove('show');
+  document.getElementById('menuOverlay').classList.remove('show');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
   const c = loadCfg();
-  const urlEl = document.getElementById('scriptUrl');
-  if (c.scriptUrl) urlEl.value = c.scriptUrl;
+  document.getElementById('scriptUrl').value = c.scriptUrl || '';
+  if (c.addFundMult) document.getElementById('addFundMult').value = c.addFundMult;
+  if (c.otherMult) document.getElementById('otherMult').value = c.otherMult;
+  if (c.setupBalance) document.getElementById('setupBalance').value = c.setupBalance;
 
-  // Try to load config from Apps Script
-  const result = await callScript('getConfig');
-  if (result?.success && result.hasCookies) {
-    document.getElementById('jioUserId').value = result.userId || '';
-    document.getElementById('jioUserName').value = result.userName || '';
-    document.getElementById('configStatus').textContent = '✅ Config loaded (logged in)';
-    document.getElementById('configStatus').className = 'msg show msg-success';
-  } else {
-    document.getElementById('configStatus').textContent = '⚠ No config found. Fill and push config.';
-    document.getElementById('configStatus').className = 'msg show msg-error';
-  }
-
-  document.querySelectorAll('.tab').forEach(t => {
+  document.querySelectorAll('[data-tab]').forEach(t => {
     t.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      closeMenu();
+      document.querySelectorAll('[data-tab]').forEach(x => x.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    const pane = document.getElementById('tab-' + t.dataset.tab);
-    pane.classList.add('active');
-    // Auto-load Save Order data when tab is clicked
-    if (t.dataset.tab === 'create') loadGstCalc();
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+      if (t.dataset.tab === 'create') {
+        document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+        document.querySelector('.gst-tab[data-filter="new"]').classList.add('active');
+        loadGstCalc('new');
+      }
+    });
   });
+
+  callScript('getConfig').then(result => {
+    if (result?.success && result.hasCookies) {
+      document.getElementById('jioUserId').value = result.userId || '';
+      document.getElementById('jioUserName').value = result.userName || '';
+      if (result.addFundMult) {
+        document.getElementById('addFundMult').value = result.addFundMult;
+        const c = loadCfg();
+        c.addFundMult = result.addFundMult;
+        saveCfg(c);
+      }
+      if (result.otherMult) {
+        document.getElementById('otherMult').value = result.otherMult;
+        const c = loadCfg();
+        c.otherMult = result.otherMult;
+        saveCfg(c);
+      }
+      if (result.balance) {
+        document.getElementById('setupBalance').value = result.balance;
+        const c = loadCfg();
+        c.setupBalance = result.balance;
+        saveCfg(c);
+      }
+      document.getElementById('configStatus').textContent = '✅ Config loaded (logged in)';
+      document.getElementById('configStatus').className = 'msg show msg-success';
+    } else {
+      document.getElementById('configStatus').textContent = '⚠ No config found. Fill and push config.';
+      document.getElementById('configStatus').className = 'msg show msg-error';
+    }
   });
 });
 
@@ -228,6 +325,9 @@ function saveSetup() {
     jioCookies: document.getElementById('jioCookies').value.trim(),
     jioUserId: document.getElementById('jioUserId').value.trim(),
     jioUserName: document.getElementById('jioUserName').value.trim(),
+    addFundMult: document.getElementById('addFundMult').value.trim(),
+    otherMult: document.getElementById('otherMult').value.trim(),
+    setupBalance: document.getElementById('setupBalance').value.trim(),
   };
   saveCfg(c);
   showMsg('setupMsg', 'Config saved locally.', 'success');
@@ -239,6 +339,9 @@ async function sendSetup() {
     cookies: c.jioCookies,
     userId: c.jioUserId,
     userName: c.jioUserName,
+    addFundMult: c.addFundMult,
+    otherMult: c.otherMult,
+    balance: c.setupBalance,
   });
   showMsg('setupMsg', result?.success ? '✅ Config pushed to Apps Script' :
     '⚠ ' + (result?.error || 'Check Apps Script deployment'), result?.success ? 'success' : 'error');
@@ -254,9 +357,167 @@ async function testConnection() {
   }
 }
 
+// ── Retailer Dropdown ──────────────────────────────────────────
+let retailers = [];
+let retailerOptionsHtml = '';
+
+async function loadRetailers() {
+  if (retailers.length) return;
+  const result = await callScript('getRetailers');
+  retailers = result?.data || [];
+  retailerOptionsHtml = '<option value="">— Select Retailer —</option>' +
+    '<option value="add_fund" style="font-weight:600;color:#6366f1">── Add Fund ──</option>' +
+    '<option disabled style="font-size:1px;background:#e2e8f0">────────────</option>';
+  for (const r of retailers) {
+    const name = (r.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    retailerOptionsHtml += `<option value="${r.customerNum}">${name}</option>`;
+  }
+  renderNewRows();
+}
+
+async function loadClosingBalance() {
+  const el = document.getElementById('balDisplay');
+  const result = await callScript('getClosingBalance');
+  if (result?.success) {
+    const bal = Number(result.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
+    el.textContent = 'Current Closing Balance: ₹ ' + bal;
+    el.style.display = 'block';
+  }
+}
+
+// ── Multi-Row New Order Input ────────────────────────────────────
+let newRows = [];
+let newRowIdCounter = 0;
+let newSelRows = new Set();
+
+function addNewRow() {
+  newRows.push({ id: ++newRowIdCounter, retailerVal: '', custNum: '', basic: '', amount: '', orderId: '' });
+  renderNewRows();
+  setTimeout(() => {
+    const last = document.querySelector('#newRowsBody tr:last-child select');
+    if (last) last.focus();
+  }, 50);
+}
+
+function removeNewRow(id) {
+  newRows = newRows.filter(r => r.id !== id);
+  newSelRows.delete(id);
+  renderNewRows();
+}
+
+function toggleNewRow(id) {
+  if (newSelRows.has(id)) newSelRows.delete(id); else newSelRows.add(id);
+  document.getElementById('newSelCount').textContent = newSelRows.size;
+}
+
+function toggleAllNew(checked) {
+  document.querySelectorAll('#newRowsBody .new-cb').forEach(cb => { cb.checked = checked; });
+  newSelRows.clear();
+  if (checked) newRows.forEach(r => newSelRows.add(r.id));
+  document.getElementById('newSelCount').textContent = newSelRows.size;
+}
+
+function getMult(isAddFund) {
+  const af = parseFloat(document.getElementById('addFundMult')?.value) || 1.0435;
+  const ot = parseFloat(document.getElementById('otherMult')?.value) || 1.042;
+  return isAddFund ? af : ot;
+}
+
+function onNewRetailerChange(id, sel) {
+  const row = newRows.find(r => r.id === id);
+  if (!row) return;
+  if (sel.value === 'add_fund') { row.custNum = '660002825'; }
+  else { row.custNum = sel.value; }
+  row.retailerVal = sel.value;
+  if (row.basic) row.amount = (parseFloat(row.basic) * getMult(sel.value === 'add_fund')).toFixed(2);
+  renderNewRows();
+}
+
+function updateNewRowVal(id, field, value) {
+  const row = newRows.find(r => r.id === id);
+  if (!row) return;
+  row[field] = value;
+  if (field === 'basic') {
+    row.amount = value ? (parseFloat(value) * getMult(row.retailerVal === 'add_fund')).toFixed(2) : '';
+  }
+  renderNewRows();
+}
+
+function renderNewRows() {
+  const tbody = document.getElementById('newRowsBody');
+  let html = '';
+  for (const r of newRows) {
+    const sel = newSelRows.has(r.id);
+    html += `<tr>
+      <td style="text-align:center"><input class="new-cb" type="checkbox" ${sel ? 'checked' : ''} onchange="toggleNewRow(${r.id})"></td>
+      <td><select onchange="onNewRetailerChange(${r.id},this)" style="max-width:180px;font-size:.75rem;padding:4px 6px">${retailerOptionsHtml.replace('value="' + r.retailerVal + '"', 'value="' + r.retailerVal + '" selected')}</select></td>
+      <td><input type="text" value="${r.custNum}" placeholder="Cust #" style="width:100px;font-size:.75rem;padding:4px 6px" onchange="updateNewRowVal(${r.id},'custNum',this.value)"></td>
+      <td><input type="number" step="0.01" value="${r.basic}" placeholder="0.00" style="width:80px;font-size:.75rem;padding:4px 6px" onchange="updateNewRowVal(${r.id},'basic',this.value)"></td>
+      <td><input type="text" value="${r.amount}" readonly style="width:90px;font-size:.75rem;padding:4px 6px;background:#f1f5f9"></td>
+      <td><input type="text" value="${r.orderId}" readonly placeholder="— after Push —" style="width:100px;font-size:.75rem;padding:4px 6px;background:#f1f5f9"></td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="pushNewRow(${r.id})" style="color:#7c3aed;border-color:#7c3aed;margin-right:4px">Push</button>
+        <button class="btn-sm btn-outline" onclick="removeNewRow(${r.id})" style="color:#dc2626;border-color:#dc2626">✕</button>
+      </td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('newSelCount').textContent = newSelRows.size;
+}
+
+async function pushNewRow(id) {
+  const row = newRows.find(r => r.id === id);
+  if (!row || !row.custNum || !row.amount) return;
+  const result = await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
+  if (result?.success && result.orderId) {
+    row.orderId = result.orderId;
+    renderNewRows();
+    showMsg('newOrderMsg', '\u2705 Order ID: ' + result.orderId, 'success');
+  } else {
+    showMsg('newOrderMsg', '\u274C ' + (result?.error || 'Push failed'), 'error');
+  }
+}
+
+async function batchPushNew() {
+  if (!newSelRows.size) return;
+  if (!confirm('Push ' + newSelRows.size + ' order(s) to Jio?')) return;
+  for (const id of newSelRows) {
+    const row = newRows.find(r => r.id === id);
+    if (row && row.custNum && row.amount) {
+      const result = await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
+      if (result?.success && result.orderId) row.orderId = result.orderId;
+    }
+  }
+  renderNewRows();
+  showMsg('newOrderMsg', '\u2705 Push complete', 'success');
+}
+
+async function batchSubmitNew() {
+  const selected = newRows.filter(r => newSelRows.has(r.id));
+  if (!selected.length) { showMsg('newOrderMsg', 'Select rows to submit.', 'error'); return; }
+  const btn = document.querySelector('#newOrderForm .btn-primary');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting...';
+  let count = 0;
+  for (const row of selected) {
+    if (!row.custNum || !row.basic || !row.amount) continue;
+    const isAddFund = row.retailerVal === 'add_fund';
+    const partner = isAddFund ? 'SELF' : (retailers.find(r => r.customerNum === row.retailerVal)?.name || '');
+    const result = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId });
+    if (result?.success) count++;
+  }
+  btn.disabled = false; btn.innerHTML = 'Submit Selected';
+  showMsg('newOrderMsg', '\u2705 ' + count + ' row(s) submitted', 'success');
+  newRows = newRows.filter(r => !newSelRows.has(r.id));
+  newSelRows.clear();
+  renderNewRows();
+  loadClosingBalance();
+  gstLoaded = false;
+}
+
 // ── Save Order ──────────────────────────────────────────────────
 let gstAllRows = [];
 let gstLoaded = false;
+let tallyData = {};
 
 async function loadGstCalc(filter) {
   const form = document.getElementById('newOrderForm');
@@ -265,6 +526,9 @@ async function loadGstCalc(filter) {
   if (filter === 'new') {
     form.style.display = 'flex';
     wrap.style.display = 'none';
+    loadRetailers();
+    loadClosingBalance();
+    if (!newRows.length) addNewRow();
     return;
   }
 
@@ -273,52 +537,182 @@ async function loadGstCalc(filter) {
 
   if (!gstLoaded) {
     wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
-    const result = await callScript('getGstCalc');
-    gstAllRows = result?.data || [];
+    const [gstResult, tallyResult] = await Promise.all([
+      callScript('getGstCalc'),
+      callScript('getTallyData'),
+    ]);
+    gstAllRows = gstResult?.data || [];
+    tallyData = tallyResult?.data || {};
     if (!gstAllRows.length) {
-      wrap.innerHTML = '<p style="color:#999">' + (result?.error || 'No data') + '</p>';
+      wrap.innerHTML = '<p style="color:#999">' + (gstResult?.error || 'No data') + '</p>';
       return;
     }
     gstAllRows.reverse();
     gstLoaded = true;
   }
 
-  renderGstTable(filter);
+  renderGstTable(filter, tallyData);
 }
 
-function renderGstTable(filter) {
+function lookupTallyBalance(partnerName, tallyMap) {
+  if (!partnerName || !tallyMap) return null;
+  const clean = s => s.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const p = clean(partnerName);
+  if (!p) return null;
+  for (const key in tallyMap) {
+    if (clean(key) === p) return tallyMap[key];
+  }
+  return null;
+}
+
+const selectedRows = new Set();
+
+function toggleRow(idx) {
+  if (selectedRows.has(idx)) selectedRows.delete(idx); else selectedRows.add(idx);
+}
+
+function toggleAll(checked) {
+  document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = checked; });
+  selectedRows.clear();
+  if (checked) document.querySelectorAll('.row-cb').forEach(cb => selectedRows.add(+cb.dataset.idx));
+}
+
+async function batchPush() {
+  if (!selectedRows.size) return;
+  if (!confirm(`Push ${selectedRows.size} order(s) to Jio?`)) return;
+  for (const idx of selectedRows) {
+    const result = await callScript('pushRow', { rowIndex: idx });
+  }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
+
+async function batchComplete() {
+  if (!selectedRows.size) return;
+  if (!confirm(`Mark ${selectedRows.size} row(s) as Completed?`)) return;
+  for (const idx of selectedRows) {
+    const result = await callScript('completeRow', { rowIndex: idx });
+  }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
+
+async function batchDelete() {
+  if (!selectedRows.size) return;
+  const reverse = confirm(`Reverse balance for ${selectedRows.size} deleted row(s)?`);
+  for (const idx of selectedRows) {
+    const row = gstAllRows.find(r => r.rowIndex === idx);
+    if (!row) continue;
+    await callScript('deleteRow', { rowIndex: idx, amount: row.amount, partner: row.partner, reverse });
+  }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
+
+function renderGstTable(filter, tallyMap) {
   const wrap = document.getElementById('gstWrap');
   let rows = gstAllRows;
-  if (filter === 'pending') rows = rows.filter(r => r.hasOrderId && r.status !== 'Completed' && r.status !== 'In Credit');
+  if (filter === 'pending') rows = rows.filter(r => r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete'));
 
   if (filter !== 'all' && !rows.length) {
     wrap.innerHTML = '<p style="color:#999">No pending orders.</p>';
     return;
   }
 
-  let html = `<div style="overflow-x:auto"><table><thead><tr>
+  let html = `<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
+    <button class="btn-sm btn-outline" onclick="batchPush()" style="color:#6366f1;border-color:#6366f1">Push</button>
+    <button class="btn-sm btn-outline" onclick="batchComplete()" style="color:#166534;border-color:#166534">Complete</button>
+    <button class="btn-sm btn-outline" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
+    <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
+  </div>
+  <div style="overflow-x:auto"><table><thead><tr>
+    <th style="width:32px"><input type="checkbox" onchange="toggleAll(this.checked)"></th>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
-    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Remark</th><th>Status</th>
+    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Ledger Bal</th><th>Remark</th><th>Status</th>
   </tr></thead><tbody>`;
 
   for (const r of rows) {
     const amt = parseFloat(r.amount) || 0;
+    const isCompleted = r.status === 'Completed' || r.status === 'Transfer complete';
+    const hasPush = r.customerNum && !r.hasOrderId && !isCompleted;
+    const isInCredit = r.status === 'In Credit';
+    const balStr = isInCredit ? lookupTallyBalance(r.partner, tallyMap) : null;
+    const balVal = parseFloat((balStr || '').replace(/,/g, ''));
+    const balColor = balVal > 0 ? '#eab308' : balVal === 0 ? '#22c55e' : '#ef4444';
+    const balDisplay = (!isInCredit || isNaN(balVal)) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
+    const checked = selectedRows.has(r.rowIndex) ? 'checked' : '';
     html += `<tr>
+      <td style="text-align:center"><input class="row-cb" type="checkbox" data-idx="${r.rowIndex}" ${checked} onchange="toggleRow(${r.rowIndex});document.getElementById('selCount').textContent=selectedRows.size"></td>
       <td>${r.date}</td>
-      <td>${r.orderId || '-'}</td>
+      <td>${isCompleted ? (r.orderId || '-') : '<input type="text" value="' + (r.orderId || '') + '" placeholder="Order ID" style="width:80px;padding:2px 6px;font-size:.75rem" onchange="updateOrderId(' + r.rowIndex + ', this.value)">'}</td>
       <td>${r.partner}</td>
       <td><code>${r.customerNum || '—'}</code></td>
       <td>${r.basic}</td>
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td>${r.closingBal}</td>
-      <td>${r.remark || ''}</td>
-      <td><span class="badge ${r.status === 'Completed' || r.status === 'In Credit' ? 'badge-success' : 'badge-pending'}">${r.status}</span></td>
+      <td>${balDisplay}</td>
+      <td>${isCompleted ? (r.remark || '') : '<input type="text" value="' + (r.remark || '') + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem" onchange="updateRemark(' + r.rowIndex + ', this.value)">'}</td>
+      <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
     </tr>`;
   }
 
   html += `</tbody></table></div>
     <p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p>`;
   wrap.innerHTML = html;
+  document.getElementById('selCount').textContent = selectedRows.size;
+}
+
+async function pushGstRow(rowIndex) {
+  if (!confirm('Push this order to Jio?')) return;
+  const result = await callScript('pushRow', { rowIndex });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  }
+  alert(result?.error || 'Order ' + result.orderId + ' pushed!');
+}
+
+async function completeGstRow(rowIndex) {
+  if (!confirm('Mark as Completed?')) return;
+  const result = await callScript('completeRow', { rowIndex });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  }
+}
+
+async function deleteGstRow(rowIndex) {
+  const row = gstAllRows.find(r => r.rowIndex === rowIndex);
+  if (!row) return;
+  if (!confirm('Delete this row?')) return;
+  const reverse = confirm('Reverse the balance transaction?');
+  const result = await callScript('deleteRow', { rowIndex, amount: row.amount, partner: row.partner, reverse });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+    if (result.closingBal !== undefined) {
+      document.getElementById('balDisplay').textContent = 'Closing Bal: \u20B9 ' + Number(result.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
+    }
+  }
+}
+
+async function updateOrderId(rowIndex, orderId) {
+  const result = await callScript('updateOrderId', { rowIndex, orderId });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  }
+}
+
+async function updateRemark(rowIndex, remark) {
+  const result = await callScript('updateRemark', { rowIndex, remark });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  }
 }
 
 // Setup sub-tab clicks
@@ -334,28 +728,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Default: New tab (form visible)
     document.getElementById('newOrderForm').style.display = 'flex';
     document.getElementById('gstWrap').style.display = 'none';
+    loadRetailers();
+    loadClosingBalance();
+    if (!newRows.length) addNewRow();
   }, 100);
 });
-
-async function submitNewOrder() {
-  const custNum = document.getElementById('newCustNum').value.trim();
-  const amount = document.getElementById('newOrderAmt').value.trim();
-  if (!custNum || !amount) { showMsg('newOrderMsg', 'Fill both fields.', 'error'); return; }
-
-  const btn = document.getElementById('newOrderBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting...';
-  showMsg('newOrderMsg', '', 'success');
-
-  const result = await callScript('saveOrder', { customerNum: custNum, amount });
-  if (result?.success) {
-    showMsg('newOrderMsg', '✅ Order ' + (result.orderId || '') + ' created!', 'success');
-    document.getElementById('newOrderAmt').value = '';
-    gstLoaded = false; // force reload next time
-  } else {
-    showMsg('newOrderMsg', '❌ ' + (result?.error || JSON.stringify(result) || 'Failed'), 'error');
-  }
-  btn.disabled = false; btn.innerHTML = 'Submit';
-}
 
 // ── Fetch Orders ─────────────────────────────────────────────────────
 async function fetchOrders() {

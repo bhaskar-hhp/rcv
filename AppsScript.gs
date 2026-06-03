@@ -44,6 +44,9 @@ function getProps() {
     hmacKey: getConfig('JIO_HMAC_KEY') || 'T1MtRFNNLUtFWSRAKiUmIQ==',
     userId: getConfig('JIO_USER_ID') || '',
     userName: getConfig('JIO_USERNAME') || '',
+    addFundMult: getConfig('ADD_FUND_MULT') || '',
+    otherMult: getConfig('OTHER_MULT') || '',
+    balance: getConfig('BALANCE') || '',
   };
 }
 
@@ -147,12 +150,15 @@ function doPost(e) {
         if (data.cookies) setConfig('JIO_COOKIES', data.cookies);
         if (data.userId) setConfig('JIO_USER_ID', data.userId);
         if (data.userName) setConfig('JIO_USERNAME', data.userName);
+        if (data.addFundMult) setConfig('ADD_FUND_MULT', data.addFundMult);
+        if (data.otherMult) setConfig('OTHER_MULT', data.otherMult);
+        if (data.balance) setConfig('BALANCE', data.balance);
         result = { success: true, message: 'Config saved' };
         break;
 
       case 'getConfig':
         const cfg = getProps();
-        result = { success: true, userName: cfg.userName, userId: cfg.userId, hasCookies: !!cfg.cookies };
+        result = { success: true, userName: cfg.userName, userId: cfg.userId, hasCookies: !!cfg.cookies, addFundMult: cfg.addFundMult, otherMult: cfg.otherMult, balance: cfg.balance };
         break;
 
       case 'getUser':
@@ -172,8 +178,44 @@ function doPost(e) {
         result = getGstCalcData();
         break;
 
+      case 'getRetailers':
+        result = getRetailersList();
+        break;
+
+      case 'addCreditRow':
+        result = addGstCalcRow(data);
+        break;
+
+      case 'getClosingBalance':
+        result = getClosingBalance();
+        break;
+
+      case 'completeRow':
+        result = completeRowFromSheet(data.rowIndex);
+        break;
+
       case 'pushRow':
         result = pushRowFromSheet(data.rowIndex);
+        break;
+
+      case 'updateOrderId':
+        result = updateOrderIdInSheet(data.rowIndex, data.orderId);
+        break;
+
+      case 'saveTallyData':
+        result = saveTallyDataToSheet(data.ledgers);
+        break;
+
+      case 'updateRemark':
+        result = updateRemarkInSheet(data.rowIndex, data.remark);
+        break;
+
+      case 'getTallyData':
+        result = getTallyDataFromSheet();
+        break;
+
+      case 'deleteRow':
+        result = deleteRowFromSheet(data);
         break;
 
       default:
@@ -225,7 +267,7 @@ function createPushOrder(customerNum, amount) {
     try {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Jio_secondary');
       if (sheet) {
-        const today = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy');
         sheet.appendRow([today, orderId || '', customerNum, amount, 'Pending']);
       }
     } catch (e) {}
@@ -253,6 +295,22 @@ function loadRdsMaster() {
   return map;
 }
 
+function getRetailersList() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return { success: false, error: 'rds_master not found' };
+  const data = sheet.getDataRange().getValues();
+  const retailers = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[0]) {
+      const name = String(row[0]).replace(/\s+$/, '');
+      const customerNum = String(row[1] || '').trim();
+      retailers.push({ name, customerNum });
+    }
+  }
+  return { success: true, count: retailers.length, data: retailers };
+}
+
 function matchCustomer(rdsName, masterMap) {
   if (!rdsName) return '';
   const clean = String(rdsName).replace(/\(RCV\)/gi, '').replace(/[,\-]/g, ' ').trim().toLowerCase();
@@ -278,22 +336,34 @@ function getGstCalcData() {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const partner = String(r[2] || '').replace(/\s+$/, '');
-      const customer = matchCustomer(partner, masterMap);
+      const customer = matchCustomer(partner, masterMap) || String(r[3] || '');
       result.push({
         rowIndex: i + 1,
-        date: String(r[0] || ''),
+        date: r[0] instanceof Date ? Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy') : String(r[0] || ''),
         orderId: String(r[1] || '').replace(/[^\d]/g, ''),
         partner: partner,
         customerNum: customer,
-        basic: String(r[3] || ''),
-        amount: String(r[4] || ''),
-        status: String(r[5] || 'Pending'),
+        basic: String(r[4] || ''),
+        amount: String(r[5] || ''),
+        status: String(r[8] || 'Pending'),
         closingBal: String(r[6] || ''),
         remark: String(r[7] || ''),
         hasOrderId: !!String(r[1] || '').replace(/[^\d]/g, ''),
       });
     }
     return { success: true, count: result.length, data: result };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+function completeRowFromSheet(rowIndex) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const gst = ss.getSheetByName('gst_calc');
+    if (!gst) return { success: false, error: 'gst_calc not found' };
+    gst.getRange(rowIndex, 9).setValue('Completed');
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.toString() };
   }
@@ -308,18 +378,18 @@ function pushRowFromSheet(rowIndex) {
     const row = gst.getRange(rowIndex, 1, 1, 10).getValues()[0];
     const partner = String(row[2] || '').replace(/\s+$/, '');
     const masterMap = loadRdsMaster();
-    const customerNum = matchCustomer(partner, masterMap);
-    const amount = String(row[4] || '').replace(/[^\d.]/g, '');
+    const customerNum = matchCustomer(partner, masterMap) || String(row[3] || '');
+    const amount = String(row[5] || '').replace(/[^\d.]/g, '');
 
     if (!customerNum) return { success: false, error: 'Customer number not found for ' + partner };
-    if (!amount || parseFloat(amount) <= 0) return { success: false, error: 'Invalid amount: ' + row[4] };
+    if (!amount || parseFloat(amount) <= 0) return { success: false, error: 'Invalid amount: ' + row[5] };
 
     // Create push order via Jio API
     const orderResult = createPushOrder(customerNum, amount);
     if (orderResult.success && orderResult.orderId) {
-      // Update sheet: Order ID (B), Status (F)
+      // Update sheet: Order ID (B), Status (I)
       gst.getRange(rowIndex, 2).setValue(orderResult.orderId);
-      gst.getRange(rowIndex, 6).setValue('Completed');
+      gst.getRange(rowIndex, 9).setValue('Completed');
       return { success: true, orderId: orderResult.orderId };
     }
     return orderResult;
@@ -364,4 +434,98 @@ function fetchOrders(type) {
     return { success: true, count: (result.data || []).length, data: result.data };
   }
   return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+// ── Add Credit Row to gst_calc ────────────────────────────────────
+function addGstCalcRow(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('gst_calc');
+  if (!sheet) return { success: false, error: 'gst_calc not found' };
+
+  const prevBalance = parseFloat(getConfig('BALANCE')) || 0;
+  const amount = parseFloat(data.amount) || 0;
+  const newBalance = data.isAddFund
+    ? prevBalance + amount
+    : prevBalance - amount;
+
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
+  sheet.appendRow([
+    today,            // Date
+    data.orderId || '', // Order ID
+    data.partner,     // Partner
+    data.customerNum, // Customer #
+    data.basic,       // Basic
+    data.amount,      // Amount
+    newBalance,       // Closing Bal
+    '',               // Remark
+    'In Credit',      // Status
+  ]);
+
+  setConfig('BALANCE', String(newBalance));
+  return { success: true, closingBal: newBalance };
+}
+
+function getClosingBalance() {
+  return { success: true, closingBal: parseFloat(getConfig('BALANCE')) || 0 };
+}
+
+function updateOrderIdInSheet(rowIndex, orderId) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return { success: false, error: 'gst_calc not found' };
+  sheet.getRange(rowIndex, 2).setValue(orderId);
+  return { success: true };
+}
+
+function saveTallyDataToSheet(ledgers) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const targetGid = 638048736;
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Sheet with gid=638048736 not found' };
+
+  sheet.clearContents();
+  const now = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy HH:mm');
+  const rows = ledgers.map(l => [l.name, l.openingBalance, l.closingBalance, now]);
+  rows.unshift(['Ledger Name', 'Opening Balance', 'Closing Balance', 'Timestamp']);
+  sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+  return { success: true, count: ledgers.length };
+}
+
+function getTallyDataFromSheet() {
+  const targetGid = 638048736;
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Tally sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < rows.length; i++) {
+    const name = String(rows[i][0] || '').trim();
+    const closing = String(rows[i][2] || '').trim();
+    if (name) map[name] = closing;
+  }
+  return { success: true, data: map };
+}
+
+function updateRemarkInSheet(rowIndex, remark) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return { success: false, error: 'gst_calc not found' };
+  sheet.getRange(rowIndex, 8).setValue(remark);
+  return { success: true };
+}
+
+function deleteRowFromSheet(data) {
+  const rowIndex = data.rowIndex;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return { success: false, error: 'gst_calc not found' };
+
+  if (data.reverse) {
+    const amount = parseFloat(data.amount) || 0;
+    const isAddFund = String(data.partner || '').trim().toUpperCase() === 'SELF';
+    const prevBalance = parseFloat(getConfig('BALANCE')) || 0;
+    const newBalance = isAddFund ? prevBalance - amount : prevBalance + amount;
+    setConfig('BALANCE', String(newBalance));
+    sheet.deleteRow(rowIndex);
+    return { success: true, closingBal: newBalance };
+  }
+
+  sheet.deleteRow(rowIndex);
+  return { success: true };
 }
