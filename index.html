@@ -130,6 +130,7 @@
         <button class="gst-tab" data-filter="pending">Pending</button>
         <button class="gst-tab" data-filter="all">All</button>
       </div>
+      <div id="balDisplay" style="font-size:.8rem;color:#475569;margin-bottom:8px"></div>
       <div id="newOrderForm" style="display:none;flex-direction:column;gap:8px">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-primary" onclick="batchSubmitNew()">Submit Selected</button>
@@ -137,7 +138,6 @@
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="newSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addNewRow()" style="margin-left:auto">+ Add Row</button>
         </div>
-        <div id="balDisplay" style="font-size:.8rem;color:#475569"></div>
         <div id="newOrderMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllNew(this.checked)"></th>
@@ -534,6 +534,7 @@ async function loadGstCalc(filter) {
 
   form.style.display = 'none';
   wrap.style.display = 'block';
+  loadClosingBalance();
 
   if (!gstLoaded) {
     wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
