@@ -130,7 +130,8 @@
         <button class="gst-tab" data-filter="pending">Pending</button>
         <button class="gst-tab" data-filter="all">All</button>
       </div>
-      <div id="balDisplay" style="font-size:.8rem;color:#475569;margin-bottom:8px"></div>
+      <div id="balDisplay" style="font-size:.8rem;color:#475569;margin-bottom:2px"></div>
+      <div id="primaryDisplay" style="font-size:.8rem;color:#475569;margin-bottom:8px"></div>
       <div id="newOrderForm" style="display:none;flex-direction:column;gap:8px">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-primary" onclick="batchSubmitNew()">Submit Selected</button>
@@ -376,13 +377,22 @@ async function loadRetailers() {
 }
 
 async function loadClosingBalance() {
-  const el = document.getElementById('balDisplay');
-  const result = await callScript('getClosingBalance');
-  if (result?.success) {
-    const bal = Number(result.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
-    el.textContent = 'Current Closing Balance: ₹ ' + bal;
-    el.style.display = 'block';
+  const balEl = document.getElementById('balDisplay');
+  const priEl = document.getElementById('primaryDisplay');
+  const [balResult, priResult] = await Promise.all([
+    callScript('getClosingBalance'),
+    callScript('getPrimary'),
+  ]);
+  if (balResult?.success) {
+    const bal = Number(balResult.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
+    balEl.textContent = 'Closing Balance: \u20B9 ' + bal;
+    balEl.style.display = 'block';
   }
+  if (priResult?.success) {
+    priEl.textContent = 'Primary: ' + priResult.primary;
+    priEl.style.display = 'block';
+  }
+}
 }
 
 // ── Multi-Row New Order Input ────────────────────────────────────

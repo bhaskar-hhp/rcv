@@ -218,6 +218,10 @@ function doPost(e) {
         result = deleteRowFromSheet(data);
         break;
 
+      case 'getPrimary':
+        result = getPrimaryValue();
+        break;
+
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -498,6 +502,13 @@ function addGstCalcRow(data) {
 
 function getClosingBalance() {
   return { success: true, closingBal: getLastClosingBalance() };
+}
+
+function getPrimaryValue() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('rds_master');
+  if (!sheet) return { success: false, error: 'rds_master not found' };
+  const val = sheet.getRange('F1').getValue();
+  return { success: true, primary: String(val) };
 }
 
 function updateOrderIdInSheet(rowIndex, orderId) {
