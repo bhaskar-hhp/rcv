@@ -133,8 +133,8 @@
       <h2>Push Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
         <button class="gst-tab active" data-filter="new">New</button>
-        <button class="gst-tab" data-filter="partner_balance">Partner Balance</button>
         <button class="gst-tab" data-filter="pending">Pending</button>
+        <button class="gst-tab" data-filter="partner_balance">Partner Balance</button>
         <button class="gst-tab" data-filter="all">All</button>
       </div>
       <div id="newOrderForm" style="display:none;flex-direction:column;gap:8px">
@@ -719,7 +719,7 @@ function renderGstTable(filter, tallyMap) {
   <div style="overflow-x:auto"><table><thead><tr>
     <th style="width:32px"><input type="checkbox" onchange="toggleAll(this.checked)"></th>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
-    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Ledger Bal</th><th>Remark</th><th>Status</th>
+    <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Ledger Bal</th><th>Remark</th><th>Status</th><th style="width:60px">Action</th>
   </tr></thead><tbody>`;
 
   for (const r of rows) {
@@ -744,6 +744,7 @@ function renderGstTable(filter, tallyMap) {
       <td>${balDisplay}</td>
       <td>${isCompleted ? (r.remark || '') : '<input type="text" value="' + (r.remark || '') + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem" onchange="updateRemark(' + r.rowIndex + ', this.value)">'}</td>
       <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
+      <td>${isInCredit ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}</td>
     </tr>`;
   }
 
@@ -773,6 +774,15 @@ async function pushGstRow(rowIndex) {
 async function completeGstRow(rowIndex) {
   if (!confirm('Mark as Completed?')) return;
   const result = await callScript('completeRow', { rowIndex });
+  if (result?.success) {
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  }
+}
+
+async function approveRow(rowIndex) {
+  if (!confirm('Approve this order?')) return;
+  const result = await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
   if (result?.success) {
     gstLoaded = false;
     loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
