@@ -215,10 +215,11 @@
         <div class="field"><label>Add Fund Multiplier</label><input id="addFundMult" type="number" step="0.0001" value="1.0435" placeholder="1.0435"></div>
         <div class="field"><label>Other Multiplier</label><input id="otherMult" type="number" step="0.0001" value="1.042" placeholder="1.042"></div>
         <div class="field"><label>Balance (₹)</label><input id="setupBalance" type="number" step="0.01" placeholder="0.00"></div>
-        <div class="field full" style="display:flex;gap:8px">
+        <div class="field full" style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-primary" onclick="saveSetup()">Save Config</button>
           <button class="btn-outline" onclick="sendSetup()">Push to Apps Script</button>
           <button class="btn-outline" onclick="testConnection()">Test</button>
+          <button class="btn-outline" onclick="syncBalanceFromJio()" style="color:#16a34a;border-color:#16a34a">Sync Balance from Jio</button>
         </div>
       </div>
       <div id="setupMsg" class="msg"></div>
@@ -386,6 +387,24 @@ async function testConnection() {
     showMsg('setupMsg', '✅ Connected as ' + (result.data?.fullName || result.fullName || 'OK'), 'success');
   } else {
     showMsg('setupMsg', '⚠ ' + (result?.error || 'No response. Deploy Apps Script first.'), 'error');
+  }
+}
+
+async function syncBalanceFromJio() {
+  showMsg('setupMsg', 'Fetching Jio balance...', 'success');
+  const result = await callScript('getJioBalance');
+  if (result?.success && result.jioBalance !== undefined) {
+    const bal = result.jioBalance;
+    document.getElementById('setupBalance').value = bal;
+    const pushResult = await callScript('setup', { ...loadCfg(), balance: String(bal) });
+    if (pushResult?.success) {
+      showMsg('setupMsg', '✅ Balance synced from Jio: \u20B9 ' + Number(bal).toLocaleString('en-IN', {minimumFractionDigits:2}), 'success');
+      loadClosingBalance();
+    } else {
+      showMsg('setupMsg', '⚠ Balance fetched but Config push failed: ' + (pushResult?.error || ''), 'error');
+    }
+  } else {
+    showMsg('setupMsg', '⚠ Failed to fetch Jio balance. Check cookies.', 'error');
   }
 }
 
