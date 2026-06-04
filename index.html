@@ -423,10 +423,8 @@ async function fetchJioBalance() {
   const el = document.getElementById('hdrBalance');
   el.textContent = '...';
   const result = await callScript('getJioBalance');
-  if (result?.success) {
-    let bal = result.balance;
-    if (typeof bal === 'object') bal = JSON.stringify(bal);
-    el.textContent = '\u20B9 ' + bal;
+  if (result?.success && result.jioBalance !== undefined) {
+    el.textContent = '\u20B9 ' + Number(result.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
   } else {
     el.textContent = 'Error';
     setTimeout(() => loadClosingBalance(), 2000);

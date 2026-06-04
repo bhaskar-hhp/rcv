@@ -330,7 +330,9 @@ function getJioBalance() {
   const path = "/api/dsm-orders/details-of-balance?userType=ZD&customerNumber='660002825'";
   const result = jioApi('GET', path, null, fullName, userId);
   if (result.status === 200) {
-    return { success: true, balance: result.data };
+    const arr = Array.isArray(result.data) ? result.data : (result.data?.d?.results || []);
+    const amt = arr[0]?.AvailableAmt || arr[0]?.availableAmt || '0';
+    return { success: true, jioBalance: parseFloat(amt) };
   }
   return { success: false, error: 'HTTP ' + result.status };
 }
