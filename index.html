@@ -680,17 +680,29 @@ function renderGstTable(filter, tallyMap) {
   let rows = gstAllRows;
   if (filter === 'pending') rows = rows.filter(r => r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete'));
 
+  const pf = document.getElementById('partnerFilter')?.value?.trim().toLowerCase() || '';
+  if (filter === 'all' && pf) {
+    rows = rows.filter(r => String(r.partner || '').toLowerCase().includes(pf));
+  }
+
   if (filter !== 'all' && !rows.length) {
     wrap.innerHTML = '<p style="color:#999">No pending orders.</p>';
     return;
   }
+  if (filter === 'all' && !rows.length) {
+    wrap.innerHTML = '<p style="color:#999">No rows match the filter.</p>';
+    return;
+  }
 
-  let html = `<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
+  let html = `<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <button class="btn-sm btn-outline" onclick="batchPush()" style="color:#6366f1;border-color:#6366f1">Push</button>
     <button class="btn-sm btn-outline" onclick="batchComplete()" style="color:#166534;border-color:#166534">Complete</button>
     <button class="btn-sm btn-outline" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
-    <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
-  </div>
+    <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>`
+  if (filter === 'all') {
+    html += `<input type="text" id="partnerFilter" placeholder="Filter by Partner" value="${document.getElementById('partnerFilter')?.value || ''}" oninput="filterByPartner()" style="width:140px;padding:4px 8px;font-size:.75rem;margin-left:auto">`;
+  }
+  html += `</div>
   <div style="overflow-x:auto"><table><thead><tr>
     <th style="width:32px"><input type="checkbox" onchange="toggleAll(this.checked)"></th>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
@@ -726,6 +738,11 @@ function renderGstTable(filter, tallyMap) {
     <p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p>`;
   wrap.innerHTML = html;
   document.getElementById('selCount').textContent = selectedRows.size;
+}
+
+function filterByPartner() {
+  const filter = document.querySelector('.gst-tab.active')?.dataset?.filter || 'all';
+  renderGstTable(filter, tallyData);
 }
 
 async function pushGstRow(rowIndex) {
