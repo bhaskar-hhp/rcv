@@ -732,6 +732,17 @@ async function batchComplete() {
   selectedRows.clear();
 }
 
+async function batchApprove() {
+  if (!selectedRows.size) return;
+  if (!confirm(`Approve ${selectedRows.size} row(s) as Transferred?`)) return;
+  for (const idx of selectedRows) {
+    await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+  }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
+
 async function batchDelete() {
   if (!selectedRows.size) return;
   if (!confirm(`Delete ${selectedRows.size} row(s)?`)) return;
@@ -766,6 +777,7 @@ function renderGstTable(filter, tallyMap) {
   let html = `<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <button class="btn-sm btn-outline" onclick="batchPush()" style="color:#6366f1;border-color:#6366f1">Push</button>
     <button class="btn-sm btn-outline" onclick="batchComplete()" style="color:#166534;border-color:#166534">Complete</button>
+    <button class="btn-sm btn-outline" onclick="batchApprove()" style="color:#16a34a;border-color:#16a34a">Approve</button>
     <button class="btn-sm btn-outline" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
     <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
     <button class="btn-sm btn-outline" onclick="refreshGst()" style="margin-left:auto">↻ Refresh</button>`
