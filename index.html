@@ -767,7 +767,8 @@ function renderGstTable(filter, tallyMap) {
     <button class="btn-sm btn-outline" onclick="batchPush()" style="color:#6366f1;border-color:#6366f1">Push</button>
     <button class="btn-sm btn-outline" onclick="batchComplete()" style="color:#166534;border-color:#166534">Complete</button>
     <button class="btn-sm btn-outline" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
-    <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>`
+    <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
+    <button class="btn-sm btn-outline" onclick="refreshGst()" style="margin-left:auto">↻ Refresh</button>`
   if (filter === 'all') {
     html += `<input type="text" id="partnerFilter" placeholder="Filter by Partner" value="${document.getElementById('partnerFilter')?.value || ''}" oninput="filterByPartner()" style="width:140px;padding:4px 8px;font-size:.75rem;margin-left:auto">`;
   }
@@ -808,6 +809,13 @@ function renderGstTable(filter, tallyMap) {
     <p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p>`;
   wrap.innerHTML = html;
   document.getElementById('selCount').textContent = selectedRows.size;
+}
+
+function refreshGst() {
+  gstLoaded = false;
+  selectedRows.clear();
+  const filter = document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending';
+  loadGstCalc(filter);
 }
 
 function filterByPartner() {
