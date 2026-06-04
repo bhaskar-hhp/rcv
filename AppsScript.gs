@@ -643,6 +643,25 @@ function deleteRowFromSheet(data) {
   if (!sheet) return { success: false, error: 'gst_calc not found' };
 
   sheet.deleteRow(data.rowIndex);
+
+  // Sync balance from Jio
+  const userInfo = getUserInfo();
+  if (userInfo) {
+    const props = getProps();
+    const startup = (userInfo.StartUp || [{}])[0];
+    const fullName = startup.fullName || props.userName;
+    const userId = startup.id || props.userId;
+    const path = "/api/dsm-orders/details-of-balance?userType=ZD&customerNumber='660002825'";
+    const jioResult = jioApi('GET', path, null, fullName, userId);
+    if (jioResult.status === 200) {
+      const arr = Array.isArray(jioResult.data) ? jioResult.data : (jioResult.data?.d?.results || []);
+      const amt = arr[0]?.AvailableAmt || arr[0]?.availableAmt || '0';
+      const jioBal = parseFloat(amt);
+      setConfig('BALANCE', String(jioBal));
+      return { success: true, jioBalance: jioBal };
+    }
+  }
+
   const closingBal = recalculateBalances();
   return { success: true, closingBal };
 }

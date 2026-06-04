@@ -747,8 +747,13 @@ async function batchDelete() {
   if (!selectedRows.size) return;
   if (!confirm(`Delete ${selectedRows.size} row(s)?`)) return;
   const idxs = [...selectedRows].sort((a, b) => b - a);
+  let lastResult;
   for (const idx of idxs) {
-    await callScript('deleteRow', { rowIndex: idx });
+    lastResult = await callScript('deleteRow', { rowIndex: idx });
+  }
+  if (lastResult?.jioBalance !== undefined) {
+    document.getElementById('hdrBalance').textContent = '\u20B9 ' + Number(lastResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
+    document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(lastResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
   }
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
