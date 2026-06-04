@@ -532,7 +532,7 @@ function addGstCalcRow(data) {
   const sheet = ss.getSheetByName('gst_calc');
   if (!sheet) return { success: false, error: 'gst_calc not found' };
 
-  const prevBalance = getLastClosingBalance();
+  const prevBalance = parseFloat(getConfig('BALANCE')) || getLastClosingBalance();
   const amount = parseFloat(data.amount) || 0;
   const newBalance = data.isAddFund
     ? prevBalance + amount
