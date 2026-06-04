@@ -869,15 +869,40 @@ async function completeGstRow(rowIndex) {
 }
 
 async function approveRow(rowIndex) {
-  if (!confirm('Approve this order?')) return;
-  const result = await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
+  const row = gstAllRows.find(r => r.rowIndex === rowIndex);
+  if (!row || !row.orderId) { showMsg('gstWrap', 'No order ID — push the order first.', 'error'); return; }
+  if (!confirm('Approve order ' + row.orderId + '?')) return;
+  const result = await callScript('approveOrder', { orderNum: row.orderId, amount: row.amount });
   if (result?.success) {
+    await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
     gstLoaded = false;
     loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
   } else {
     const wrap = document.getElementById('gstWrap');
     wrap.innerHTML = '<p style="color:#dc2626">' + (result?.error || 'Approve failed') + '</p>';
   }
+}
+
+async function batchApprove() {
+  if (!selectedRows.size) return;
+  if (!confirm(`Approve ${selectedRows.size} row(s)?`)) return;
+  let err;
+  for (const idx of selectedRows) {
+    const row = gstAllRows.find(r => r.rowIndex === idx);
+    if (!row || !row.orderId) { err = 'Order ID missing for row ' + idx; break; }
+    const result = await callScript('approveOrder', { orderNum: row.orderId, amount: row.amount });
+    if (!result?.success) { err = result?.error || 'Approve failed'; break; }
+    await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+  }
+  if (err) {
+    const wrap = document.getElementById('gstWrap');
+    wrap.innerHTML = '<p style="color:#dc2626">' + err + '</p>';
+    return;
+  }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
 }
 
 async function deleteGstRow(rowIndex) {
