@@ -743,6 +743,8 @@ function renderGstTable(filter, tallyMap) {
 function filterByPartner() {
   const filter = document.querySelector('.gst-tab.active')?.dataset?.filter || 'all';
   renderGstTable(filter, tallyData);
+  const el = document.getElementById('partnerFilter');
+  if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 
 async function pushGstRow(rowIndex) {
