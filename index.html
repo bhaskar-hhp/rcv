@@ -109,7 +109,7 @@
       <p style="font-size:.75rem;color:#64748b;margin:0;margin-top:-2px">Jio Order Manager</p>
     </div>
     <div id="hdrStats" style="display:flex;flex-direction:column;align-items:flex-end;font-size:.7rem;color:#1e40af;margin-right:4px;white-space:nowrap;line-height:1.4">
-      <span>Balance: <strong id="hdrBalance">—</strong></span>
+      <span style="display:flex;align-items:center;gap:4px">Balance: <strong id="hdrBalance">—</strong> <span onclick="fetchJioBalance()" style="cursor:pointer;font-size:.65rem;opacity:.6;text-decoration:underline" title="Fetch from Jio">Jio</span></span>
       <span style="display:flex;align-items:center;gap:4px">Primary: <strong id="hdrPrimary">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
     </div>
     <div class="menu-wrapper">
@@ -416,6 +416,20 @@ async function loadClosingBalance() {
   }
   if (priResult?.success) {
     document.getElementById('hdrPrimary').textContent = priResult.primary;
+  }
+}
+
+async function fetchJioBalance() {
+  const el = document.getElementById('hdrBalance');
+  el.textContent = '...';
+  const result = await callScript('getJioBalance');
+  if (result?.success) {
+    let bal = result.balance;
+    if (typeof bal === 'object') bal = JSON.stringify(bal);
+    el.textContent = '\u20B9 ' + bal;
+  } else {
+    el.textContent = 'Error';
+    setTimeout(() => loadClosingBalance(), 2000);
   }
 }
 

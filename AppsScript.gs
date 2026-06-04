@@ -198,6 +198,10 @@ function doPost(e) {
         result = pushRowFromSheet(data.rowIndex);
         break;
 
+      case 'getJioBalance':
+        result = getJioBalance();
+        break;
+
       case 'approveOrder':
         result = approveOrderOnJio(data.orderNum, data.amount);
         break;
@@ -313,6 +317,22 @@ function approveOrderOnJio(orderNum, amount) {
     return { success: true };
   }
   return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+// ── Get Jio Balance ───────────────────────────────────────────────────
+function getJioBalance() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const path = "/api/dsm-orders/details-of-balance?userType=ZD&customerNumber='660002825'";
+  const result = jioApi('GET', path, null, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, balance: result.data };
+  }
+  return { success: false, error: 'HTTP ' + result.status };
 }
 
 // ── GST Calc Table (Save Order Page) ─────────────────────────────────
