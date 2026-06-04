@@ -109,7 +109,7 @@
       <p style="font-size:.75rem;color:#64748b;margin:0;margin-top:-2px">Jio Order Manager</p>
     </div>
     <div id="hdrStats" style="display:flex;flex-direction:column;align-items:flex-end;font-size:.7rem;color:#1e40af;margin-right:4px;white-space:nowrap;line-height:1.4">
-      <span style="display:flex;align-items:center;gap:4px">Balance: <strong id="hdrBalance">—</strong> <span onclick="fetchJioBalance()" style="cursor:pointer;font-size:.65rem;opacity:.6;text-decoration:underline" title="Fetch from Jio">Jio</span></span>
+      <span style="display:flex;align-items:center;gap:4px">Balance: <strong id="hdrBalance">—</strong> <strong id="hdrJioBalance" style="color:#16a34a">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
       <span style="display:flex;align-items:center;gap:4px">Primary: <strong id="hdrPrimary">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
     </div>
     <div class="menu-wrapper">
@@ -406,28 +406,20 @@ async function loadRetailers() {
 }
 
 async function loadClosingBalance() {
-  const [balResult, priResult] = await Promise.all([
+  const [balResult, priResult, jioResult] = await Promise.all([
     callScript('getClosingBalance'),
     callScript('getPrimary'),
+    callScript('getJioBalance'),
   ]);
   if (balResult?.success) {
     const bal = Number(balResult.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
     document.getElementById('hdrBalance').textContent = '\u20B9 ' + bal;
   }
+  if (jioResult?.success && jioResult.jioBalance !== undefined) {
+    document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(jioResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
+  }
   if (priResult?.success) {
     document.getElementById('hdrPrimary').textContent = priResult.primary;
-  }
-}
-
-async function fetchJioBalance() {
-  const el = document.getElementById('hdrBalance');
-  el.textContent = '...';
-  const result = await callScript('getJioBalance');
-  if (result?.success && result.jioBalance !== undefined) {
-    el.textContent = '\u20B9 ' + Number(result.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
-  } else {
-    el.textContent = 'Error';
-    setTimeout(() => loadClosingBalance(), 2000);
   }
 }
 
