@@ -735,8 +735,15 @@ async function batchComplete() {
 async function batchApprove() {
   if (!selectedRows.size) return;
   if (!confirm(`Approve ${selectedRows.size} row(s) as Transferred?`)) return;
+  let err;
   for (const idx of selectedRows) {
-    await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+    const result = await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+    if (!result?.success) err = result?.error || 'Approve failed';
+  }
+  if (err) {
+    const wrap = document.getElementById('gstWrap');
+    wrap.innerHTML = '<p style="color:#dc2626">' + err + '</p>';
+    return;
   }
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
@@ -818,7 +825,7 @@ function renderGstTable(filter, tallyMap) {
       <td>${balDisplay}</td>
       <td>${isCompleted ? (r.remark || '') : '<input type="text" value="' + (r.remark || '') + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem" onchange="updateRemark(' + r.rowIndex + ', this.value)">'}</td>
       <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
-      <td>${isInCredit ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}</td>
+      <td>${isInCredit && r.remark !== 'Transferred' ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}</td>
     </tr>`;
   }
 
@@ -867,6 +874,9 @@ async function approveRow(rowIndex) {
   if (result?.success) {
     gstLoaded = false;
     loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  } else {
+    const wrap = document.getElementById('gstWrap');
+    wrap.innerHTML = '<p style="color:#dc2626">' + (result?.error || 'Approve failed') + '</p>';
   }
 }
 
