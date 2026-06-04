@@ -198,6 +198,10 @@ function doPost(e) {
         result = pushRowFromSheet(data.rowIndex);
         break;
 
+      case 'approveOrder':
+        result = approveOrderOnJio(data.orderNum, data.amount);
+        break;
+
       case 'updateOrderId':
         result = updateOrderIdInSheet(data.rowIndex, data.orderId);
         break;
@@ -292,6 +296,23 @@ function createPushOrder(customerNum, amount) {
   } else {
     return { success: false, error: 'HTTP ' + result.status, data: result.data };
   }
+}
+
+// ── Approve Order ─────────────────────────────────────────────────────
+function approveOrderOnJio(orderNum, amount) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const path = '/api/dsm-orders/order-rejection-set?userType=ZD';
+  const body = { GrantedValue: String(Number(amount).toFixed(2)), OrderNum: String(orderNum), ReasonRej: '', RDCustNum: '', ZDCustNum: '660002825' };
+  const result = jioApi('PUT', path, body, fullName, userId);
+  if (result.status === 200) {
+    return { success: true };
+  }
+  return { success: false, error: 'HTTP ' + result.status, data: result.data };
 }
 
 // ── GST Calc Table (Save Order Page) ─────────────────────────────────

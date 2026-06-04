@@ -878,7 +878,7 @@ async function fetchApprovalOrders() {
     return;
   }
   let html = `<table><thead><tr>
-    <th>Order ID</th><th>Date</th><th>Customer</th><th>City</th><th>Amount</th><th>Status</th>
+    <th>Order ID</th><th>Date</th><th>Customer</th><th>City</th><th>Amount</th><th>Status</th><th style="width:80px">Action</th>
   </tr></thead><tbody>`;
   orders.forEach(o => {
     const ms = (o.CreationDate || '').replace('/Date(','').replace(')/','');
@@ -891,10 +891,22 @@ async function fetchApprovalOrders() {
       <td>${o.City || '-'}</td>
       <td>${amt}</td>
       <td><span class="badge badge-pending">Open Order</span></td>
+      <td><button class="btn-sm btn-primary" onclick="approveOrder('${o.OrderNum}', '${o.TotalAmount || 0}')">Approve</button></td>
     </tr>`;
   });
   html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${orders.length} open order(s)</p>`;
   wrap.innerHTML = html;
+}
+
+async function approveOrder(orderNum, amount) {
+  if (!confirm(`Approve order ${orderNum} for \u20B9 ${parseFloat(amount || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}?`)) return;
+  const wrap = document.getElementById('approvalWrap');
+  const result = await callScript('approveOrder', { orderNum, amount });
+  if (result?.success) {
+    fetchApprovalOrders();
+  } else {
+    wrap.innerHTML = '<p style="color:#dc2626">Error: ' + (result?.error || 'Failed to approve') + '</p>';
+  }
 }
 
 async function searchOrders() {
