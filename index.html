@@ -406,21 +406,23 @@ async function loadRetailers() {
 }
 
 async function loadClosingBalance() {
-  const [balResult, priResult, jioResult] = await Promise.all([
+  const [balResult, priResult] = await Promise.all([
     callScript('getClosingBalance'),
     callScript('getPrimary'),
-    callScript('getJioBalance'),
   ]);
   if (balResult?.success) {
     const bal = Number(balResult.closingBal).toLocaleString('en-IN', {minimumFractionDigits:2});
     document.getElementById('hdrBalance').textContent = '\u20B9 ' + bal;
   }
-  if (jioResult?.success && jioResult.jioBalance !== undefined) {
-    document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(jioResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
-  }
   if (priResult?.success) {
     document.getElementById('hdrPrimary').textContent = priResult.primary;
   }
+  // Fetch Jio balance in background
+  callScript('getJioBalance').then(jioResult => {
+    if (jioResult?.success && jioResult.jioBalance !== undefined) {
+      document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(jioResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
+    }
+  });
 }
 
 // ── Multi-Row New Order Input ────────────────────────────────────
