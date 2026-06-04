@@ -120,6 +120,7 @@
         <button class="menu-item active" data-tab="create">Save Order</button>
         <button class="menu-item" data-tab="orders">Orders</button>
         <button class="menu-item" data-tab="search">Search</button>
+        <button class="menu-item" data-tab="approval">Approval</button>
         <button class="menu-item" data-tab="setup">⚙ Setup</button>
       </div>
     </div>
@@ -180,6 +181,17 @@
         <button class="btn-primary" onclick="searchOrders()">Search</button>
       </div>
       <div id="searchResults"><p style="color:#999">Enter a ledger name and click Search.</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: Approval -->
+  <div class="tab-pane" id="tab-approval">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Approval</h2>
+        <button class="btn-primary btn-sm" id="approvalRefreshBtn" onclick="fetchApprovalOrders()">Refresh</button>
+      </div>
+      <div id="approvalWrap"><p style="color:#999">Click Refresh to load open orders.</p></div>
     </div>
   </div>
 
@@ -263,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.gst-tab[data-filter="new"]').classList.add('active');
         loadGstCalc('new');
       }
+      if (t.dataset.tab === 'approval') fetchApprovalOrders();
     });
   });
 
@@ -850,6 +863,37 @@ async function fetchOrders() {
     </tr>`;
   });
   html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${orders.length} order(s)</p>`;
+  wrap.innerHTML = html;
+}
+
+async function fetchApprovalOrders() {
+  const wrap = document.getElementById('approvalWrap');
+  const btn = document.getElementById('approvalRefreshBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...';
+  const result = await callScript('getOrders', { type: 'secondary' });
+  btn.disabled = false; btn.innerHTML = 'Refresh';
+  const orders = (result?.data || []).filter(o => (o.StatusDesc || '').toLowerCase() === 'open order');
+  if (!orders.length) {
+    wrap.innerHTML = '<p style="color:#999">' + (orders.length === 0 && result?.data?.length ? 'No open orders found.' : result?.error || 'No orders found.') + '</p>';
+    return;
+  }
+  let html = `<table><thead><tr>
+    <th>Order ID</th><th>Date</th><th>Customer</th><th>City</th><th>Amount</th><th>Status</th>
+  </tr></thead><tbody>`;
+  orders.forEach(o => {
+    const ms = (o.CreationDate || '').replace('/Date(','').replace(')/','');
+    const dt = ms ? new Date(parseInt(ms)).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '-';
+    const amt = '\u20B9 ' + parseFloat(o.TotalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits:2});
+    html += `<tr>
+      <td><strong>${o.OrderNum}</strong></td>
+      <td>${dt}</td>
+      <td>${o.CustName || '-'}</td>
+      <td>${o.City || '-'}</td>
+      <td>${amt}</td>
+      <td><span class="badge badge-pending">Open Order</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${orders.length} open order(s)</p>`;
   wrap.innerHTML = html;
 }
 
