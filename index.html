@@ -142,6 +142,7 @@
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button class="btn-primary" onclick="batchSubmitNew()">Submit Selected</button>
           <button class="btn-sm btn-outline" onclick="batchPushNew()" style="color:#7c3aed;border-color:#7c3aed">Push Selected</button>
+          <button class="btn-sm btn-outline" onclick="batchPushAndSubmitNew()" style="color:#dc2626;border-color:#dc2626">Push &amp; Submit Selected</button>
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="newSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addNewRow()" style="margin-left:auto">+ Add Row</button>
         </div>
@@ -548,6 +549,35 @@ async function batchSubmitNew() {
   }
   btn.disabled = false; btn.innerHTML = 'Submit Selected';
   showMsg('newOrderMsg', '\u2705 ' + count + ' row(s) submitted', 'success');
+  newRows = newRows.filter(r => !newSelRows.has(r.id));
+  newSelRows.clear();
+  renderNewRows();
+  loadClosingBalance();
+  gstLoaded = false;
+}
+
+async function batchPushAndSubmitNew() {
+  if (!newSelRows.size) return;
+  if (!confirm('Push & Submit ' + newSelRows.size + ' order(s)?')) return;
+  const btn = document.querySelector('#newOrderForm .btn-outline[style*="color:#dc2626"]');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...';
+  const selected = newRows.filter(r => newSelRows.has(r.id));
+  let pushCount = 0, submitCount = 0;
+  for (const row of selected) {
+    if (!row.custNum || !row.amount) continue;
+    const pushResult = await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
+    if (pushResult?.success && pushResult.orderId) {
+      row.orderId = pushResult.orderId;
+      pushCount++;
+    }
+    if (!row.custNum || !row.basic || !row.amount) continue;
+    const isAddFund = row.retailerVal === 'add_fund';
+    const partner = isAddFund ? 'SELF' : (retailers.find(r => r.customerNum === row.retailerVal)?.name || '');
+    const subResult = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId });
+    if (subResult?.success) submitCount++;
+  }
+  btn.disabled = false; btn.innerHTML = 'Push & Submit Selected';
+  showMsg('newOrderMsg', '\u2705 Pushed: ' + pushCount + ', Submitted: ' + submitCount, 'success');
   newRows = newRows.filter(r => !newSelRows.has(r.id));
   newSelRows.clear();
   renderNewRows();
