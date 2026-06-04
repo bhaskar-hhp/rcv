@@ -903,7 +903,6 @@ async function batchApprove() {
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
   selectedRows.clear();
 }
-}
 
 async function deleteGstRow(rowIndex) {
   if (!confirm('Delete this row?')) return;
