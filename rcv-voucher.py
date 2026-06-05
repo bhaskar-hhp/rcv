@@ -79,7 +79,7 @@ for ledger_name in ledger_names:
     '''
 
     try:
-        response = requests.post('http://localhost:9002', data=xml_request)
+        response = requests.post('http://localhost:9000', data=xml_request)
     except Exception as e:
         print(f'Failed to contact Tally: {e}')
         continue

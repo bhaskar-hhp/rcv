@@ -222,6 +222,10 @@ function doPost(e) {
         result = getTallyDataFromSheet();
         break;
 
+      case 'getRecoData':
+        result = getRecoDataFromSheet();
+        break;
+
       case 'deleteRow':
         result = deleteRowFromSheet(data);
         break;
@@ -636,6 +640,25 @@ function updateRemarkInSheet(rowIndex, remark) {
   if (!sheet) return { success: false, error: 'gst_calc not found' };
   sheet.getRange(rowIndex, 8).setValue(remark);
   return { success: true };
+}
+
+function getRecoDataFromSheet() {
+  const targetGid = 605373015;
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Reco sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const data = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const date = String(r[0] || '').trim();
+    const partner = String(r[1] || '').trim();
+    const drAmt = String(r[4] || '').trim();
+    const crAmt = String(r[5] || '').trim();
+    if (date || partner) {
+      data.push({ date, partner, drAmt, crAmt });
+    }
+  }
+  return { success: true, data };
 }
 
 function deleteRowFromSheet(data) {

@@ -121,6 +121,7 @@
         <button class="menu-item active" data-tab="create">Save Order</button>
         <button class="menu-item" data-tab="orders">Orders</button>
         <button class="menu-item" data-tab="search">Search</button>
+        <button class="menu-item" data-tab="reco">Reco</button>
         <button class="menu-item" data-tab="approval">Approval</button>
         <button class="menu-item" data-tab="setup">⚙ Setup</button>
       </div>
@@ -183,6 +184,25 @@
         <button class="btn-primary" onclick="searchOrders()">Search</button>
       </div>
       <div id="searchResults"><p style="color:#999">Enter a ledger name and click Search.</p></div>
+    </div>
+  </div>
+
+  <!-- Tab: Reco -->
+  <div class="tab-pane" id="tab-reco">
+    <div class="card">
+      <h2>Reconciliation</h2>
+      <div class="row" style="gap:8px;margin-bottom:10px">
+        <div class="field" style="flex:0 0 160px">
+          <label>Date</label>
+          <input type="date" id="recoDateFilter">
+        </div>
+        <div class="field" style="flex:1">
+          <label>Partner</label>
+          <input type="text" id="recoPartnerFilter" placeholder="Filter by partner name...">
+        </div>
+        <button class="btn-primary" onclick="fetchRecoData()" style="margin-bottom:4px">Fetch</button>
+      </div>
+      <div id="recoWrap"><p style="color:#999">Set filters and click Fetch.</p></div>
     </div>
   </div>
 
@@ -279,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadGstCalc('new');
       }
       if (t.dataset.tab === 'approval') fetchApprovalOrders();
+      if (t.dataset.tab === 'reco') fetchRecoData();
     });
   });
 
@@ -952,6 +973,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('searchInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') searchOrders();
     });
+    document.getElementById('recoPartnerFilter').addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchRecoData();
+    });
   }, 100);
 });
 
@@ -1053,6 +1077,44 @@ async function searchOrders() {
     html += `<tr><td>${name}</td><td style="color:${color};font-weight:600">${bal}</td></tr>`;
   }
   html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${entries.length} match(es)</p>`;
+  wrap.innerHTML = html;
+}
+
+// ── Reco ─────────────────────────────────────────────────────────
+async function fetchRecoData() {
+  const wrap = document.getElementById('recoWrap');
+  wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
+  const result = await callScript('getRecoData');
+  if (!result?.success) {
+    wrap.innerHTML = '<p style="color:#dc2626">' + (result?.error || 'Failed to load') + '</p>';
+    return;
+  }
+  let rows = result.data || [];
+  if (!rows.length) {
+    wrap.innerHTML = '<p style="color:#999">No data found.</p>';
+    return;
+  }
+
+  const dateFilter = document.getElementById('recoDateFilter').value;
+  const partnerFilter = document.getElementById('recoPartnerFilter').value.trim().toLowerCase();
+
+  if (dateFilter) rows = rows.filter(r => r.date === dateFilter);
+  if (partnerFilter) rows = rows.filter(r => (r.partner || '').toLowerCase().includes(partnerFilter));
+
+  let html = `<div style="overflow-x:auto"><table><thead><tr>
+    <th>Date</th><th>Partner</th><th>Cr Amt</th><th>Dr Amt</th>
+  </tr></thead><tbody>`;
+  for (const r of rows) {
+    const cr = parseFloat(r.crAmt) || 0;
+    const dr = parseFloat(r.drAmt) || 0;
+    html += `<tr>
+      <td>${r.date}</td>
+      <td>${r.partner}</td>
+      <td style="color:#16a34a;font-weight:600">${cr ? '\u20B9 ' + cr.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
+      <td style="color:#ef4444;font-weight:600">${dr ? '\u20B9 ' + dr.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
+    </tr>`;
+  }
+  html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p></div>`;
   wrap.innerHTML = html;
 }
 </script>
