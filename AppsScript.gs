@@ -647,18 +647,28 @@ function getRecoDataFromSheet() {
   let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
   if (!sheet) return { success: false, error: 'Reco sheet not found' };
   const rows = sheet.getDataRange().getValues();
-  const data = [];
+  const groups = {};
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    const date = String(r[0] || '').trim();
-    const partner = String(r[1] || '').trim();
-    const drAmt = String(r[4] || '').trim();
-    const crAmt = String(r[5] || '').trim();
-    if (date || partner) {
-      data.push({ date, partner, drAmt, crAmt });
+    const rawDate = r[0];
+    let date = '';
+    if (rawDate instanceof Date) {
+      date = Utilities.formatDate(rawDate, 'IST', 'dd-MM-yyyy');
+    } else {
+      const s = String(rawDate || '').trim();
+      const d = new Date(s);
+      date = (!isNaN(d.getTime())) ? Utilities.formatDate(d, 'IST', 'dd-MM-yyyy') : s;
     }
+    const partner = String(r[6] || '').trim();
+    const crAmt = parseFloat(String(r[3] || '0').replace(/,/g, '')) || 0;
+    const drAmt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+    if (!partner && !date) continue;
+    const key = date + '|' + partner;
+    if (!groups[key]) groups[key] = { date, partner, crAmt: 0, drAmt: 0 };
+    groups[key].crAmt += crAmt;
+    groups[key].drAmt += drAmt;
   }
-  return { success: true, data };
+  return { success: true, data: Object.values(groups) };
 }
 
 function deleteRowFromSheet(data) {

@@ -1098,15 +1098,22 @@ async function fetchRecoData() {
   const dateFilter = document.getElementById('recoDateFilter').value;
   const partnerFilter = document.getElementById('recoPartnerFilter').value.trim().toLowerCase();
 
-  if (dateFilter) rows = rows.filter(r => r.date === dateFilter);
+  if (dateFilter) {
+    const parts = dateFilter.split('-');
+    const df = parts[2] + '-' + parts[1] + '-' + parts[0];
+    rows = rows.filter(r => r.date === df);
+  }
   if (partnerFilter) rows = rows.filter(r => (r.partner || '').toLowerCase().includes(partnerFilter));
 
+  let totalCr = 0, totalDr = 0;
   let html = `<div style="overflow-x:auto"><table><thead><tr>
     <th>Date</th><th>Partner</th><th>Cr Amt</th><th>Dr Amt</th>
   </tr></thead><tbody>`;
   for (const r of rows) {
     const cr = parseFloat(r.crAmt) || 0;
     const dr = parseFloat(r.drAmt) || 0;
+    totalCr += cr;
+    totalDr += dr;
     html += `<tr>
       <td>${r.date}</td>
       <td>${r.partner}</td>
@@ -1114,7 +1121,11 @@ async function fetchRecoData() {
       <td style="color:#ef4444;font-weight:600">${dr ? '\u20B9 ' + dr.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
     </tr>`;
   }
-  html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${rows.length} row(s)</p></div>`;
+  html += `</tbody></table></div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:.8rem;color:#64748b">
+      <span>${rows.length} row(s)</span>
+      <span>Total Cr: <strong style="color:#16a34a">\u20B9 ${totalCr.toLocaleString('en-IN', {minimumFractionDigits:2})}</strong> | Total Dr: <strong style="color:#ef4444">\u20B9 ${totalDr.toLocaleString('en-IN', {minimumFractionDigits:2})}</strong></span>
+    </div>`;
   wrap.innerHTML = html;
 }
 </script>
