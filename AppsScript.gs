@@ -660,8 +660,8 @@ function getRecoDataFromSheet() {
       date = (!isNaN(d.getTime())) ? Utilities.formatDate(d, 'IST', 'dd-MM-yyyy') : s;
     }
     const partner = String(r[6] || '').trim();
-    const crAmt = parseFloat(String(r[3] || '0').replace(/,/g, '')) || 0;
-    const drAmt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+    const drAmt = Math.abs(parseFloat(String(r[4] || '0').replace(/,/g, ''))) || 0;
+    const crAmt = Math.abs(parseFloat(String(r[5] || '0').replace(/,/g, ''))) || 0;
     if (!partner && !date) continue;
     const key = date + '|' + partner;
     if (!groups[key]) groups[key] = { date, partner, crAmt: 0, drAmt: 0 };
