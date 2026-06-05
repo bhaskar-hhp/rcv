@@ -1083,6 +1083,7 @@ async function searchOrders() {
 let recoData = [];
 
 async function fetchRecoData() {
+  document.getElementById('recoDateFilter').value = '';
   const wrap = document.getElementById('recoWrap');
   wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
   const result = await callScript('getRecoData');
