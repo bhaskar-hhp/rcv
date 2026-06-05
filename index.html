@@ -859,8 +859,12 @@ function renderGstTable(filter, tallyMap) {
     const balStr = lookupTallyBalance(r.partner, tallyMap);
     const balVal = parseFloat((balStr || '').replace(/,/g, ''));
     const balColor = balVal > 0 ? '#16a34a' : balVal < 0 ? '#ef4444' : '#64748b';
-    const balDisplay = isNaN(balVal) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
     const checked = selectedRows.has(r.rowIndex) ? 'checked' : '';
+    const remVal = r.remark || 'Pending';
+    const remColor = remVal === 'Pending' ? '#dc2626' : '#16a34a';
+    const remarkHtml = isCompleted
+      ? '<span style="color:' + remColor + ';font-weight:600">' + remVal + '</span>'
+      : '<input type="text" value="' + remVal + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem;color:' + remColor + ';font-weight:600" onchange="updateRemark(' + r.rowIndex + ', this.value)">';
     html += `<tr>
       <td style="text-align:center"><input class="row-cb" type="checkbox" data-idx="${r.rowIndex}" ${checked} onchange="toggleRow(${r.rowIndex});document.getElementById('selCount').textContent=selectedRows.size"></td>
       <td>${r.date}</td>
@@ -872,7 +876,7 @@ function renderGstTable(filter, tallyMap) {
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td>${r.closingBal}</td>
       <td>${balDisplay}</td>
-      <td>${isCompleted ? '<span style="color:#16a34a;font-weight:600">' + (r.remark || 'Pending') + '</span>' : '<input type="text" value="' + (r.remark || 'Pending') + '" placeholder="Remark" style="width:90px;padding:2px 6px;font-size:.75rem;color:#16a34a;font-weight:600" onchange="updateRemark(' + r.rowIndex + ', this.value)">'}</td>
+      <td>${remarkHtml}</td>
       <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
       <td>${isInCredit && r.remark !== 'Transferred' ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}</td>
     </tr>`;
