@@ -38,10 +38,12 @@ if dst_ws is None:
 
 existing = dst_ws.get_all_values()
 HEADERS = ['Date', 'Ledger', 'Type', 'VoucherNo', 'DrAmt', 'CrAmt', 'LedgerName']
-if existing and existing[0] == HEADERS:
+if existing and existing[0] and existing[0] == HEADERS:
     existing_df = pd.DataFrame(existing[1:], columns=HEADERS)
-else:
+elif existing and existing[0]:
     existing_df = pd.DataFrame(existing, columns=HEADERS)
+else:
+    existing_df = pd.DataFrame([], columns=HEADERS)
 
 all_new_entries = []
 
@@ -117,7 +119,7 @@ for ledger_name in ledger_names:
 
 if all_new_entries:
     rows = [[e[c] for c in HEADERS] for e in all_new_entries]
-    if not existing or existing[0] != HEADERS:
+    if not existing or not existing[0] or existing[0] != HEADERS:
         dst_ws.append_rows([HEADERS] + rows, value_input_option='USER_ENTERED')
     else:
         dst_ws.append_rows(rows, value_input_option='USER_ENTERED')
