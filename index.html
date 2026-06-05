@@ -840,10 +840,10 @@ function renderGstTable(filter, tallyMap) {
     const isCompleted = r.status === 'Completed' || r.status === 'Transfer complete';
     const hasPush = r.customerNum && !r.hasOrderId && !isCompleted;
     const isInCredit = r.status === 'In Credit';
-    const balStr = isInCredit ? lookupTallyBalance(r.partner, tallyMap) : null;
+    const balStr = lookupTallyBalance(r.partner, tallyMap);
     const balVal = parseFloat((balStr || '').replace(/,/g, ''));
     const balColor = balVal > 0 ? '#16a34a' : balVal < 0 ? '#ef4444' : '#64748b';
-    const balDisplay = (!isInCredit || isNaN(balVal)) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
+    const balDisplay = isNaN(balVal) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
     const checked = selectedRows.has(r.rowIndex) ? 'checked' : '';
     html += `<tr>
       <td style="text-align:center"><input class="row-cb" type="checkbox" data-idx="${r.rowIndex}" ${checked} onchange="toggleRow(${r.rowIndex});document.getElementById('selCount').textContent=selectedRows.size"></td>
