@@ -37,7 +37,11 @@ if dst_ws is None:
     raise ValueError(f'Worksheet with gid={DST_GID} not found')
 
 existing = dst_ws.get_all_values()
-existing_df = pd.DataFrame(existing[1:], columns=existing[0] if existing else ['Date', 'Ledger', 'Type', 'VoucherNo', 'DrAmt', 'CrAmt', 'LedgerName'])
+HEADERS = ['Date', 'Ledger', 'Type', 'VoucherNo', 'DrAmt', 'CrAmt', 'LedgerName']
+if existing and existing[0] == HEADERS:
+    existing_df = pd.DataFrame(existing[1:], columns=HEADERS)
+else:
+    existing_df = pd.DataFrame(existing, columns=HEADERS)
 
 all_new_entries = []
 
@@ -112,10 +116,9 @@ for ledger_name in ledger_names:
         all_new_entries.extend(new_entries)
 
 if all_new_entries:
-    header = ['Date', 'Ledger', 'Type', 'VoucherNo', 'DrAmt', 'CrAmt', 'LedgerName']
-    rows = [[e[c] for c in header] for e in all_new_entries]
-    if not existing:
-        dst_ws.append_rows([header] + rows, value_input_option='USER_ENTERED')
+    rows = [[e[c] for c in HEADERS] for e in all_new_entries]
+    if not existing or existing[0] != HEADERS:
+        dst_ws.append_rows([HEADERS] + rows, value_input_option='USER_ENTERED')
     else:
         dst_ws.append_rows(rows, value_input_option='USER_ENTERED')
     print(f'\nAppended {len(all_new_entries)} new entries to gsheet gid={DST_GID}')
