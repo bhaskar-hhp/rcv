@@ -454,9 +454,8 @@ function pushRowFromSheet(rowIndex) {
     // Create push order via Jio API
     const orderResult = createPushOrder(customerNum, amount);
     if (orderResult.success && orderResult.orderId) {
-      // Update sheet: Order ID (B), Status (I)
+      // Update sheet: Order ID (B)
       gst.getRange(rowIndex, 2).setValue(orderResult.orderId);
-      gst.getRange(rowIndex, 9).setValue('Completed');
       return { success: true, orderId: orderResult.orderId };
     }
     return orderResult;
