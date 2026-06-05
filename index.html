@@ -1117,8 +1117,8 @@ async function fetchRecoData() {
     html += `<tr>
       <td>${r.date}</td>
       <td>${r.partner}</td>
-      <td style="color:#16a34a;font-weight:600">${cr ? '\u20B9 ' + cr.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
-      <td style="color:#ef4444;font-weight:600">${dr ? '\u20B9 ' + dr.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
+      <td style="color:#16a34a;font-weight:600">\u20B9 ${cr.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+      <td style="color:#ef4444;font-weight:600">\u20B9 ${dr.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
     </tr>`;
   }
   html += `</tbody></table></div>
