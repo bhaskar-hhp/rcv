@@ -631,6 +631,7 @@ async function batchPushAndSubmitNew() {
 let gstAllRows = [];
 let gstLoaded = false;
 let tallyData = {};
+let recoCrMap = {};
 
 async function loadGstCalc(filter) {
   const form = document.getElementById('newOrderForm');
@@ -659,12 +660,18 @@ async function loadGstCalc(filter) {
 
   if (!gstLoaded) {
     wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Loading...</p>';
-    const [gstResult, tallyResult] = await Promise.all([
+    const [gstResult, tallyResult, recoResult] = await Promise.all([
       callScript('getGstCalc'),
       callScript('getTallyData'),
+      callScript('getRecoData'),
     ]);
     gstAllRows = gstResult?.data || [];
     tallyData = tallyResult?.data || {};
+    recoCrMap = {};
+    for (const r of (recoResult?.data || [])) {
+      const key = (r.date || '') + '|' + (r.partner || '');
+      recoCrMap[key] = (recoCrMap[key] || 0) + (parseFloat(r.crAmt) || 0);
+    }
     if (!gstAllRows.length) {
       wrap.innerHTML = '<p style="color:#999">' + (gstResult?.error || 'No data') + '</p>';
       return;
@@ -822,7 +829,7 @@ function renderGstTable(filter, tallyMap) {
   html += `</div>
   <div style="overflow-x:auto"><table><thead><tr>
     <th style="width:32px"><input type="checkbox" onchange="toggleAll(this.checked)"></th>
-    <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th>
+    <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th><th>Received</th>
     <th>Basic</th><th>Amount</th><th>Closing Bal</th><th>Ledger Bal</th><th>Remark</th><th>Status</th><th style="width:60px">Action</th>
   </tr></thead><tbody>`;
 
@@ -842,6 +849,7 @@ function renderGstTable(filter, tallyMap) {
       <td>${isCompleted ? (r.orderId || '-') : '<input type="text" value="' + (r.orderId || '') + '" placeholder="Order ID" style="width:80px;padding:2px 6px;font-size:.75rem" onchange="updateOrderId(' + r.rowIndex + ', this.value)">'}</td>
       <td>${r.partner}</td>
       <td><code>${r.customerNum || '—'}</code></td>
+      <td style="color:#16a34a;font-weight:600">${recoCrMap[r.date + '|' + r.partner] ? '\u20B9 ' + recoCrMap[r.date + '|' + r.partner].toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
       <td>${r.basic}</td>
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td>${r.closingBal}</td>
