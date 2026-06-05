@@ -859,6 +859,7 @@ function renderGstTable(filter, tallyMap) {
     const balStr = lookupTallyBalance(r.partner, tallyMap);
     const balVal = parseFloat((balStr || '').replace(/,/g, ''));
     const balColor = balVal > 0 ? '#16a34a' : balVal < 0 ? '#ef4444' : '#64748b';
+    const balDisplay = isNaN(balVal) ? '—' : `<span style="color:${balColor};font-weight:600">${balVal.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>`;
     const checked = selectedRows.has(r.rowIndex) ? 'checked' : '';
     const remVal = r.remark || 'Pending';
     const remColor = remVal === 'Pending' ? '#dc2626' : '#16a34a';
