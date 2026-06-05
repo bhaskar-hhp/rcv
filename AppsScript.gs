@@ -226,6 +226,10 @@ function doPost(e) {
         result = getRecoDataFromSheet();
         break;
 
+      case 'deleteDuplicateVoucher':
+        result = deleteDuplicateVoucherFromSheet();
+        break;
+
       case 'deleteRow':
         result = deleteRowFromSheet(data);
         break;
@@ -697,4 +701,56 @@ function deleteRowFromSheet(data) {
 
   const closingBal = recalculateBalances();
   return { success: true, closingBal };
+}
+
+function deleteDuplicateVoucherFromSheet() {
+  const targetGid = 605373015;
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Sheet gid=605373015 not found' };
+
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { success: true, deleted: 0 };
+
+  // Group by VoucherNo (col D, index 3)
+  const groups = {};
+  for (let i = 1; i < rows.length; i++) {
+    const voucher = String(rows[i][3] || '').trim();
+    if (!voucher) continue;
+    if (!groups[voucher]) groups[voucher] = [];
+    groups[voucher].push({ row: i + 1, data: rows[i] });
+  }
+
+  const details = [];
+  const toDelete = [];
+
+  for (const voucher in groups) {
+    const items = groups[voucher];
+    if (items.length < 2) continue;
+
+    // Compare all columns — keep first, delete rest if identical
+    const first = items[0].data;
+    const dupRows = [];
+    for (let j = 1; j < items.length; j++) {
+      const cur = items[j].data;
+      let identical = true;
+      for (let c = 0; c < cur.length; c++) {
+        if (String(cur[c] || '') !== String(first[c] || '')) { identical = false; break; }
+      }
+      if (identical) dupRows.push(items[j].row);
+    }
+    if (dupRows.length) {
+      toDelete.push(...dupRows);
+      details.push({ voucher, rows: dupRows.length });
+    }
+  }
+
+  if (!toDelete.length) return { success: true, deleted: 0 };
+
+  // Delete from bottom to top to preserve indices
+  toDelete.sort((a, b) => b - a);
+  for (const rowNum of toDelete) {
+    sheet.deleteRow(rowNum);
+  }
+
+  return { success: true, deleted: toDelete.length, details };
 }
