@@ -45,6 +45,52 @@ elif existing and existing[0]:
 else:
     existing_df = pd.DataFrame([], columns=HEADERS)
 
+# Clean existing duplicates before appending
+def remove_duplicates_from_sheet():
+    if not existing or not existing[0]:
+        return 0
+    rows_data = existing
+    skip_header = 1 if rows_data[0] == HEADERS else 0
+    voucher_groups = {}
+    for i in range(skip_header, len(rows_data)):
+        voucher = str(rows_data[i][3] if len(rows_data[i]) > 3 else '').strip()
+        if not voucher:
+            continue
+        if voucher not in voucher_groups:
+            voucher_groups[voucher] = []
+        voucher_groups[voucher].append(i)
+
+    to_delete = []
+    for voucher, indices in voucher_groups.items():
+        if len(indices) < 2:
+            continue
+        first = rows_data[indices[0]]
+        for j in range(1, len(indices)):
+            cur = rows_data[indices[j]]
+            if len(first) == len(cur) and all(str(first[c] or '') == str(cur[c] or '') for c in range(len(first))):
+                to_delete.append(indices[j])
+
+    if not to_delete:
+        return 0
+
+    # Convert sheet row indices (0-based) to sheet row numbers (1-based)
+    sheet_row_nums = sorted([i + 1 for i in to_delete], reverse=True)
+    for r in sheet_row_nums:
+        dst_ws.delete_rows(r)
+    print(f'Removed {len(to_delete)} duplicate row(s) from sheet')
+    return len(to_delete)
+
+removed = remove_duplicates_from_sheet()
+# Reload existing data after dedup
+if removed:
+    existing = dst_ws.get_all_values()
+    if existing and existing[0] and existing[0] == HEADERS:
+        existing_df = pd.DataFrame(existing[1:], columns=HEADERS)
+    elif existing and existing[0]:
+        existing_df = pd.DataFrame(existing, columns=HEADERS)
+    else:
+        existing_df = pd.DataFrame([], columns=HEADERS)
+
 all_new_entries = []
 
 for ledger_name in ledger_names:
