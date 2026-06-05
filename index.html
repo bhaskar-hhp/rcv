@@ -851,7 +851,7 @@ function renderGstTable(filter, tallyMap) {
       <td>${isCompleted ? (r.orderId || '-') : '<input type="text" value="' + (r.orderId || '') + '" placeholder="Order ID" style="width:80px;padding:2px 6px;font-size:.75rem" onchange="updateOrderId(' + r.rowIndex + ', this.value)">'}</td>
       <td>${r.partner}</td>
       <td><code>${r.customerNum || '—'}</code></td>
-      <td style="color:#16a34a;font-weight:600">${recoCrMap[r.date + '|' + r.partner] ? '\u20B9 ' + recoCrMap[r.date + '|' + r.partner].toLocaleString('en-IN', {minimumFractionDigits:2}) : '—'}</td>
+      <td style="color:#16a34a;font-weight:600">${recoCrMap[r.date + '|' + r.partner] ? '\u20B9 ' + recoCrMap[r.date + '|' + r.partner].toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:0}) : '—'}</td>
       <td>${r.basic}</td>
       <td>₹ ${amt.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td>${r.closingBal}</td>
