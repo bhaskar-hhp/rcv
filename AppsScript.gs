@@ -246,6 +246,10 @@ function doPost(e) {
         result = addRdsRowToSheet();
         break;
 
+      case 'savePrimaryOrder':
+        result = createPrimaryOrder(data.customerNum, data.basicAmount, data.amount);
+        break;
+
       case 'deleteRdsRow':
         result = deleteRdsRowFromSheet(data.rowIndex);
         break;
@@ -308,6 +312,57 @@ function createPushOrder(customerNum, amount) {
   } else {
     return { success: false, error: 'HTTP ' + result.status, data: result.data };
   }
+}
+
+// ── Create Primary Order (SELF) ─────────────────────────────────────────
+function createPrimaryOrder(customerNum, basicAmount, amount) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed — cookies may be expired' };
+
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+
+  const article = '491216866';
+
+  // Step 1: quantity-header-set
+  const qtyPath = '/api/dsm-orders/quantity-header-set';
+  const qtyBody = {
+    userType: 'ZD',
+    payload: {
+      BlockInd: '', ContactPerson: '', ShipToParty: '660002825',
+      SoldToParty: '660002825', DocType: 'ZETP',
+      DraftOrderNum: '', UserId: '', ParentPatner: '',
+      QTYDETHEADERNAV: [{ ArticleNum: article, TargetQty: String(basicAmount), UoM: 'EA' }],
+    },
+  };
+  const qtyResult = jioApi('POST', qtyPath, qtyBody, fullName, userId);
+  if (qtyResult.status !== 200) {
+    return { success: false, error: 'quantity-header-set failed: HTTP ' + qtyResult.status };
+  }
+
+  // Step 2: order-create-set
+  const orderPath = '/api/dsm-orders/order-create-set';
+  const orderBody = {
+    userType: 'ZD',
+    payload: {
+      BlockInd: '', ContactPerson: '', ShipToParty: '660002825',
+      SoldToParty: '660002825', DocType: 'ZETP',
+      DraftOrderNum: '', UserId: '', ParentPatner: '',
+      ETPORDERCREATENAV: [{ ArticleNum: article, TargetQty: String(amount), UoM: 'EA' }],
+    },
+  };
+  const orderResult = jioApi('POST', orderPath, orderBody, fullName, userId);
+
+  if (orderResult.status === 200) {
+    const data = orderResult.data;
+    const messages = (Array.isArray(data) && data[0]?.messages) || [];
+    const orderMsg = messages.find(m => m.message?.includes('Created Successfully'));
+    const orderId = orderMsg ? orderMsg.message.match(/Order\s+(\d+)/)?.[1] : null;
+    return { success: true, orderId };
+  }
+  return { success: false, error: 'order-create-set failed: HTTP ' + orderResult.status, data: orderResult.data };
 }
 
 // ── Approve Order ─────────────────────────────────────────────────────
@@ -554,7 +609,7 @@ function addGstCalcRow(data) {
     data.basic,       // Basic
     data.amount,      // Amount
     newBalance,       // Closing Bal
-    '',               // Remark
+    data.remark || '', // Remark
     'In Credit',      // Status
   ]);
 

@@ -148,6 +148,7 @@
           <button class="btn-primary" onclick="batchSubmitNew()">Submit Selected</button>
           <button class="btn-sm btn-outline" onclick="batchPushNew()" style="color:#7c3aed;border-color:#7c3aed">Push Selected</button>
           <button class="btn-sm btn-outline" onclick="batchPushAndSubmitNew()" style="color:#dc2626;border-color:#dc2626">Push &amp; Submit Selected</button>
+          <button class="btn-sm btn-outline" id="pushPrimaryBtn" onclick="batchPushPrimaryNew()" style="color:#6366f1;border-color:#6366f1;display:none">Push Primary</button>
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="newSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addNewRow()" style="margin-left:auto">+ Add Row</button>
         </div>
@@ -510,6 +511,7 @@ function removeNewRow(id) {
 function toggleNewRow(id) {
   if (newSelRows.has(id)) newSelRows.delete(id); else newSelRows.add(id);
   document.getElementById('newSelCount').textContent = newSelRows.size;
+  updatePushPrimaryVisibility();
 }
 
 function toggleAllNew(checked) {
@@ -517,6 +519,17 @@ function toggleAllNew(checked) {
   newSelRows.clear();
   if (checked) newRows.forEach(r => newSelRows.add(r.id));
   document.getElementById('newSelCount').textContent = newSelRows.size;
+  updatePushPrimaryVisibility();
+}
+
+function updatePushPrimaryVisibility() {
+  const btn = document.getElementById('pushPrimaryBtn');
+  if (!btn) return;
+  const hasSelf = [...newSelRows].some(id => {
+    const row = newRows.find(r => r.id === id);
+    return row && row.retailerVal === 'add_fund';
+  });
+  btn.style.display = hasSelf ? 'inline-block' : 'none';
 }
 
 function getMult(isAddFund) {
@@ -558,7 +571,10 @@ function renderNewRows() {
       <td><input type="text" value="${r.amount}" readonly style="width:90px;font-size:.75rem;padding:4px 6px;background:#f1f5f9"></td>
       <td><input type="text" value="${r.orderId}" readonly placeholder="— after Push —" style="width:100px;font-size:.75rem;padding:4px 6px;background:#f1f5f9"></td>
       <td style="text-align:center;white-space:nowrap">
-        <button class="btn-sm btn-outline" onclick="pushNewRow(${r.id})" style="color:#7c3aed;border-color:#7c3aed;margin-right:4px">Push</button>
+        ${r.retailerVal === 'add_fund'
+          ? `<button class="btn-sm btn-outline" onclick="pushPrimaryNewRow(${r.id})" style="color:#6366f1;border-color:#6366f1;margin-right:4px">Push Primary</button>`
+          : `<button class="btn-sm btn-outline" onclick="pushNewRow(${r.id})" style="color:#7c3aed;border-color:#7c3aed;margin-right:4px">Push</button>`
+        }
         <button class="btn-sm btn-outline" onclick="removeNewRow(${r.id})" style="color:#dc2626;border-color:#dc2626">✕</button>
       </td>
     </tr>`;
@@ -577,6 +593,19 @@ async function pushNewRow(id) {
     showMsg('newOrderMsg', '\u2705 Order ID: ' + result.orderId, 'success');
   } else {
     showMsg('newOrderMsg', '\u274C ' + (result?.error || 'Push failed'), 'error');
+  }
+}
+
+async function pushPrimaryNewRow(id) {
+  const row = newRows.find(r => r.id === id);
+  if (!row || !row.custNum || !row.amount) return;
+  const result = await callScript('savePrimaryOrder', { customerNum: row.custNum, basicAmount: row.basic, amount: row.amount });
+  if (result?.success && result.orderId) {
+    row.orderId = result.orderId;
+    renderNewRows();
+    showMsg('newOrderMsg', '\u2705 Primary Order ID: ' + result.orderId, 'success');
+  } else {
+    showMsg('newOrderMsg', '\u274C ' + (result?.error || 'Push Primary failed'), 'error');
   }
 }
 
@@ -604,7 +633,7 @@ async function batchSubmitNew() {
     if (!row.custNum || !row.basic || !row.amount) continue;
     const isAddFund = row.retailerVal === 'add_fund';
     const partner = isAddFund ? 'SELF' : (retailers.find(r => r.customerNum === row.retailerVal)?.name || '');
-    const result = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId });
+    const result = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId, remark: isAddFund ? 'Transferred' : '' });
     if (result?.success) count++;
   }
   btn.disabled = false; btn.innerHTML = 'Submit Selected';
@@ -625,7 +654,38 @@ async function batchPushAndSubmitNew() {
   let pushCount = 0, submitCount = 0;
   for (const row of selected) {
     if (!row.custNum || !row.amount) continue;
-    const pushResult = await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
+    const isAddFund = row.retailerVal === 'add_fund';
+    const pushResult = isAddFund
+      ? await callScript('savePrimaryOrder', { customerNum: row.custNum, basicAmount: row.basic, amount: row.amount })
+      : await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
+    if (pushResult?.success && pushResult.orderId) {
+      row.orderId = pushResult.orderId;
+      pushCount++;
+    }
+    if (!row.custNum || !row.basic || !row.amount) continue;
+    const partner = isAddFund ? 'SELF' : (retailers.find(r => r.customerNum === row.retailerVal)?.name || '');
+    const subResult = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId, remark: isAddFund ? 'Transferred' : '' });
+    if (subResult?.success) submitCount++;
+  }
+  btn.disabled = false; btn.innerHTML = 'Push & Submit Selected';
+  showMsg('newOrderMsg', '\u2705 Pushed: ' + pushCount + ', Submitted: ' + submitCount, 'success');
+  newRows = newRows.filter(r => !newSelRows.has(r.id));
+  newSelRows.clear();
+  renderNewRows();
+  loadClosingBalance();
+  gstLoaded = false;
+}
+
+async function batchPushPrimaryNew() {
+  if (!newSelRows.size) return;
+  if (!confirm('Push Primary ' + newSelRows.size + ' order(s)?')) return;
+  const btn = document.getElementById('pushPrimaryBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...';
+  const selected = newRows.filter(r => newSelRows.has(r.id));
+  let pushCount = 0, submitCount = 0;
+  for (const row of selected) {
+    if (!row.custNum || !row.amount) continue;
+    const pushResult = await callScript('savePrimaryOrder', { customerNum: row.custNum, basicAmount: row.basic, amount: row.amount });
     if (pushResult?.success && pushResult.orderId) {
       row.orderId = pushResult.orderId;
       pushCount++;
@@ -633,10 +693,10 @@ async function batchPushAndSubmitNew() {
     if (!row.custNum || !row.basic || !row.amount) continue;
     const isAddFund = row.retailerVal === 'add_fund';
     const partner = isAddFund ? 'SELF' : (retailers.find(r => r.customerNum === row.retailerVal)?.name || '');
-    const subResult = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId });
+    const subResult = await callScript('addCreditRow', { partner, customerNum: row.custNum, basic: row.basic, amount: row.amount, isAddFund, orderId: row.orderId, remark: 'Transferred' });
     if (subResult?.success) submitCount++;
   }
-  btn.disabled = false; btn.innerHTML = 'Push & Submit Selected';
+  btn.disabled = false; btn.innerHTML = 'Push Primary';
   showMsg('newOrderMsg', '\u2705 Pushed: ' + pushCount + ', Submitted: ' + submitCount, 'success');
   newRows = newRows.filter(r => !newSelRows.has(r.id));
   newSelRows.clear();
@@ -750,12 +810,24 @@ const selectedRows = new Set();
 
 function toggleRow(idx) {
   if (selectedRows.has(idx)) selectedRows.delete(idx); else selectedRows.add(idx);
+  updatePendingPushPrimaryBtn();
 }
 
 function toggleAll(checked) {
   document.querySelectorAll('.row-cb').forEach(cb => { cb.checked = checked; });
   selectedRows.clear();
   if (checked) document.querySelectorAll('.row-cb').forEach(cb => selectedRows.add(+cb.dataset.idx));
+  updatePendingPushPrimaryBtn();
+}
+
+function updatePendingPushPrimaryBtn() {
+  const btn = document.getElementById('pushPrimaryPendingBtn');
+  if (!btn) return;
+  const hasSelf = [...selectedRows].some(idx => {
+    const row = gstAllRows.find(r => r.rowIndex === idx);
+    return row && row.partner === 'SELF';
+  });
+  btn.style.display = hasSelf ? 'inline-block' : 'none';
 }
 
 async function batchPush() {
@@ -764,6 +836,29 @@ async function batchPush() {
   for (const idx of selectedRows) {
     const result = await callScript('pushRow', { rowIndex: idx });
   }
+  gstLoaded = false;
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  selectedRows.clear();
+}
+
+async function batchPushPrimaryPending() {
+  if (!selectedRows.size) return;
+  if (!confirm(`Push Primary ${selectedRows.size} order(s)?`)) return;
+  const btn = document.getElementById('pushPrimaryPendingBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let pushCount = 0;
+  for (const idx of selectedRows) {
+    const row = gstAllRows.find(r => r.rowIndex === idx);
+    if (!row || row.partner !== 'SELF') continue;
+    if (!row.customerNum || !row.amount) continue;
+    const result = await callScript('savePrimaryOrder', { customerNum: row.customerNum, basicAmount: row.basic, amount: row.amount });
+    if (result?.success && result.orderId) {
+      await callScript('updateOrderId', { rowIndex: idx, orderId: result.orderId });
+      await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+      pushCount++;
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Push Primary'; }
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
   selectedRows.clear();
@@ -838,6 +933,7 @@ function renderGstTable(filter, tallyMap) {
     <button class="btn-sm btn-outline" onclick="batchPush()" style="color:#6366f1;border-color:#6366f1">Push</button>
     <button class="btn-sm btn-outline" onclick="batchComplete()" style="color:#166534;border-color:#166534">Complete</button>
     <button class="btn-sm btn-outline" onclick="batchApprove()" style="color:#16a34a;border-color:#16a34a">Approve</button>
+    <button class="btn-sm btn-outline" id="pushPrimaryPendingBtn" onclick="batchPushPrimaryPending()" style="color:#6366f1;border-color:#6366f1;display:none">Push Primary</button>
     <button class="btn-sm btn-outline" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
     <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
     <button class="btn-sm btn-outline" onclick="refreshGst()" style="margin-left:auto">↻ Refresh</button>`
@@ -879,7 +975,10 @@ function renderGstTable(filter, tallyMap) {
       <td>${balDisplay}</td>
       <td>${remarkHtml}</td>
       <td><span class="badge ${isCompleted ? 'badge-success' : r.status === 'In Credit' ? 'badge-pending' : 'badge-success'}">${r.status}</span></td>
-      <td>${isInCredit && r.remark !== 'Transferred' ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}</td>
+      <td style="white-space:nowrap">
+        ${hasPush && r.partner === 'SELF' ? '<button class="btn-sm btn-outline" onclick="pushPrimaryPendingRow(' + r.rowIndex + ')" style="color:#6366f1;border-color:#6366f1;padding:2px 6px;font-size:.7rem;margin-right:4px">Push Primary</button>' : ''}
+        ${isInCredit && r.remark !== 'Transferred' ? '<button class="btn-sm btn-outline" onclick="approveRow(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''}
+      </td>
     </tr>`;
   }
 
@@ -901,6 +1000,21 @@ function filterByPartner() {
   renderGstTable(filter, tallyData);
   const el = document.getElementById('partnerFilter');
   if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+async function pushPrimaryPendingRow(rowIndex) {
+  const row = gstAllRows.find(r => r.rowIndex === rowIndex);
+  if (!row || !row.customerNum || !row.amount) return;
+  if (!confirm('Push Primary order for ' + row.partner + '?')) return;
+  const result = await callScript('savePrimaryOrder', { customerNum: row.customerNum, basicAmount: row.basic, amount: row.amount });
+  if (result?.success && result.orderId) {
+    await callScript('updateOrderId', { rowIndex, orderId: result.orderId });
+    await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
+    gstLoaded = false;
+    loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
+  } else {
+    showMsg('gstWrap', '\u274C ' + (result?.error || 'Push Primary failed'), 'error');
+  }
 }
 
 async function pushGstRow(rowIndex) {
