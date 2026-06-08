@@ -889,14 +889,19 @@ function createDeviceOrderApi(data) {
   const startup = (userInfo.StartUp || [{}])[0];
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
   const body = {
+    BlockInd: 'Z5',
+    ContactPerson: '',
     OrderType: data.orderType,
+    ParentPatner: custNum,
+    UserID: custNum,
     ShipToParty: data.shipToParty,
-    SoldToParty: data.soldToParty,
-    ParentPatner: '660002825',
+    SoldToParty: custNum,
+    DraftOrderNum: '',
     CREATEHEADNAV: [{ ArticleNum: data.articleNum, UoM: 'EA', TargetQty: String(data.qty) }],
   };
-  const result = jioApi('POST', '/api/dsm-orders/post-Order-Create', body, fullName, userId);
+  const result = jioApi('POST', '/api/dsm-orders/post-Order-Create?userType=ZD', body, fullName, userId);
   if (result.status === 200) {
     const orderNum = result.data?.OrderNum || result.data?.orderNum || '';
     return { success: true, orderNum: String(orderNum), data: result.data };
