@@ -944,29 +944,23 @@ function fetchPendingDeviceOrders(from, to) {
   const startup = (userInfo.StartUp || [{}])[0];
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
-  const result = jioApi('GET', '/api/dsm-orders/order-displayList-set?statusCode=P', null, fullName, userId);
+  const custNum = userInfo.CustomerNum || '660002825';
 
-  const item = Array.isArray(result.data) ? result.data[0] : null;
-  const bizStatus = item?.statusCode || result.status;
+  const now = new Date();
+  const fromDate = from || Utilities.formatDate(new Date(now.getTime() - 2 * 86400000), 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+  const toDate = to || Utilities.formatDate(now, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
 
-  if (bizStatus !== 200 && bizStatus !== 201 && result.status !== 200) {
-    return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
-  }
+  const path = "/api/dsm-orders/order-displayList-set?userType=ZD&statusCode=P&fromDate=" + encodeURIComponent(fromDate) + "&toDate=" + encodeURIComponent(toDate) + "&soldToParty=" + custNum + "&shipToParty=";
+  const result = jioApi('GET', path, null, fullName, userId);
 
-  // Direct array of orders (e.g. partner-style response)
-  if (Array.isArray(result.data) && result.data.length > 0 && (result.data[0]?.OrderNum || result.data[0]?.orderNum)) {
+  if (Array.isArray(result.data)) {
     return { success: true, data: result.data };
   }
 
-  // Gateway-wrapped: [ {statusCode, body: {d: {results: [...]}}} ]
+  const item = Array.isArray(result.data) ? result.data[0] : null;
   const results = item?.body?.d?.results;
   if (Array.isArray(results)) {
     return { success: true, data: results };
-  }
-
-  // Response might be the array itself
-  if (Array.isArray(result.data)) {
-    return { success: true, data: result.data };
   }
 
   return { success: true, data: [] };
