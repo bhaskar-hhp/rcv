@@ -254,6 +254,27 @@ function doPost(e) {
         result = deleteRdsRowFromSheet(data.rowIndex);
         break;
 
+      case 'getDeviceProducts':
+        result = fetchDeviceProducts();
+        break;
+      case 'getChannelPartners':
+        result = fetchChannelPartners();
+        break;
+      case 'getARDpartners':
+        result = fetchARDpartners();
+        break;
+      case 'createDeviceOrder':
+        result = createDeviceOrderApi(data);
+        break;
+      case 'approveDeviceOrder':
+        result = approveDeviceOrderApi(data.orderNum);
+        break;
+      case 'getPendingDeviceOrders':
+        result = fetchPendingDeviceOrders(data.from, data.to);
+        break;
+      case 'saveDeviceOrder':
+        result = saveDeviceOrderToSheet(data);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -807,4 +828,128 @@ function deleteDuplicateVoucherFromSheet() {
   }
 
   return { success: true, deleted: toDelete.length, details };
+}
+
+// ── Device Orders ──────────────────────────────────────────────────────
+
+function fetchChannelPartners() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const path = "/api/dsm-orders/get-channel-partners?userType=ZD&customerNumber='660002825'&skip=0&top=9999";
+  const result = jioApi('GET', path, null, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, data: Array.isArray(result.data) ? result.data : [] };
+  }
+  const errDetail = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+  return { success: false, error: 'HTTP ' + result.status + ' — ' + errDetail, data: result.data };
+}
+
+function fetchDeviceProducts() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+  const path = "/api/dsm-orders/ProductListOSSet?userType=ZD&ICustomer='" + custNum + "'";
+  const result = jioApi('GET', path, null, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, data: Array.isArray(result.data) ? result.data : [] };
+  }
+  const errDetail = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+  return { success: false, error: 'HTTP ' + result.status + ' — ' + errDetail, data: result.data };
+}
+
+function fetchARDpartners() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+  const path = "/api/dsm-orders/get-ARD-partners?userType=ZD&customerNumber='" + custNum + "'";
+  const result = jioApi('GET', path, null, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, data: Array.isArray(result.data) ? result.data : [] };
+  }
+  const errDetail = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+  return { success: false, error: 'HTTP ' + result.status + ' — ' + errDetail, data: result.data };
+}
+
+function createDeviceOrderApi(data) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const body = {
+    OrderType: data.orderType,
+    ShipToParty: data.shipToParty,
+    SoldToParty: data.soldToParty,
+    ParentPatner: '660002825',
+    CREATEHEADNAV: [{ ArticleNum: data.articleNum, UoM: 'EA', TargetQty: String(data.qty) }],
+  };
+  const result = jioApi('POST', '/api/dsm-orders/post-Order-Create', body, fullName, userId);
+  if (result.status === 200) {
+    const orderNum = result.data?.OrderNum || result.data?.orderNum || '';
+    return { success: true, orderNum: String(orderNum), data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+function approveDeviceOrderApi(orderNum) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const body = { userType: 'ZD', OrderNum: String(orderNum), ReleaseInd: 'Z5' };
+  const result = jioApi('PUT', '/api/dsm-orders/put-approval-set', body, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+function fetchPendingDeviceOrders(from, to) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const result = jioApi('GET', '/api/dsm-orders/order-displayList-set?statusCode=P', null, fullName, userId);
+  if (result.status === 200) {
+    return { success: true, data: Array.isArray(result.data) ? result.data : [] };
+  }
+  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+function saveDeviceOrderToSheet(data) {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy');
+  sheet.appendRow([
+    today,
+    data.orderId || '',
+    data.partnerNum || '',
+    data.partnerName || '',
+    data.articleNum || '',
+    data.productName || '',
+    data.qty || '',
+    data.dealerPrice || '',
+    data.totalAmount || '',
+    data.status || 'Pending',
+  ]);
+  return { success: true };
 }
