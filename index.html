@@ -140,6 +140,7 @@
         <button class="menu-item" data-tab="dedup">Dedup Voucher</button>
         <button class="menu-item" data-tab="approval">Approval</button>
         <button class="menu-item" data-tab="device-orders">Device Orders</button>
+        <button class="menu-item" data-tab="device-pending">Device Pending</button>
         <button class="menu-item" data-tab="setup">⚙ Setup</button>
         <button class="menu-item" onclick="location.reload()" style="color:#6366f1">↻ Refresh Page</button>
       </div>
@@ -261,7 +262,6 @@
           <button class="btn-sm btn-outline" onclick="batchCreateAndApproveDeviceOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="deviceSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addDeviceRow()" style="margin-left:auto">+ Add Row</button>
-          <button class="btn-sm btn-outline" onclick="refreshPendingDeviceOrders()" style="color:#7c3aed;border-color:#7c3aed">↻ Refresh Pending</button>
         </div>
         <div id="deviceOrderMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
@@ -269,6 +269,20 @@
           <th>Date</th><th>Partner</th><th>Product</th><th>Qty</th><th>Dealer Price</th><th>Total</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Tab: Device Pending -->
+  <div class="tab-pane" id="tab-device-pending">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0">Device Pending Orders</h2>
+        <button class="btn-primary btn-sm" onclick="loadDevicePending()">↻ Refresh</button>
+      </div>
+      <div id="devicePendingMsg" class="msg"></div>
+      <div style="overflow:visible"><table><thead><tr>
+        <th>Date</th><th>Order ID</th><th>Partner</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
+      </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
     </div>
   </div>
 
@@ -355,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (t.dataset.tab === 'approval') fetchApprovalOrders();
       if (t.dataset.tab === 'device-orders') initDeviceTab();
+      if (t.dataset.tab === 'device-pending') loadDevicePending();
       if (t.dataset.tab === 'reco') fetchRecoData();
       if (t.dataset.tab === 'dedup') loadDedupTab();
     });
@@ -1745,31 +1760,50 @@ async function batchCreateAndApproveDeviceOrders() {
   deviceSelRows.clear();
 }
 
-async function refreshPendingDeviceOrders() {
-  const btn = document.querySelector('#deviceOrderForm .btn-outline[style*="color:#7c3aed"]');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...';
-  const result = await callScript('getPendingDeviceOrders');
-  btn.disabled = false; btn.innerHTML = '\u21BB Refresh Pending';
+async function loadDevicePending() {
+  const btn = document.querySelector('#tab-device-pending .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('getSavedDeviceOrders');
+  if (btn) { btn.disabled = false; btn.innerHTML = '\u21BB Refresh'; }
   const orders = Array.isArray(result?.data) ? result.data : [];
+  const tbody = document.getElementById('devicePendingBody');
   if (!orders.length) {
-    showMsg('deviceOrderMsg', 'No pending orders found.', 'success');
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No saved orders.</td></tr>';
     return;
   }
-  const today = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+  let html = '';
   for (const o of orders) {
-    const orderNum = o.OrderNum || o.orderNum || '';
-    const partnerNum = o.SoldToParty || o.soldToParty || o.ShipToParty || '';
-    const partner = devicePartners.find(p => (p.CustomerNum || p.customerNum || '') === partnerNum);
-    const articleNum = o.ArticleNum || o.articleNum || '';
-    const qty = o.TargetQty || o.targetQty || o.Qty || '1';
-    const dealerPrice = parseFloat(o.DealerPrice || o.dealerPrice || 0);
-    deviceRows.push({
-      id: ++deviceRowIdCounter, date: today, partnerNum, partnerName: partner ? (partner.CustomerName || partner.CustName || '') : '',
-      articleNum, qty: String(qty), dealerPrice, orderId: orderNum, status: 'Created',
-    });
+    const statusColor = o.status === 'Approved' ? 'badge-success' : o.status === 'Created' ? 'badge-pending' : 'badge-error';
+    const total = o.qty && o.dealerPrice ? (parseFloat(o.qty) * parseFloat(o.dealerPrice)).toLocaleString('en-IN', {minimumFractionDigits:2}) : o.totalAmount;
+    html += '<tr>' +
+      '<td style="font-size:.7rem;color:#64748b">' + (o.date || '') + '</td>' +
+      '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
+      '<td style="font-size:.7rem">' + (o.partnerName || o.partnerNum || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
+      '<td style="text-align:center">' + o.qty + '</td>' +
+      '<td>\u20B9 ' + (parseFloat(o.dealerPrice || 0)).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</td>' +
+      '<td>\u20B9 ' + total + '</td>' +
+      '<td><span class="badge ' + statusColor + '">' + o.status + '</span></td>' +
+      '<td style="text-align:center">' +
+        (o.status === 'Created'
+          ? '<button class="btn-sm btn-outline" onclick="approvePendingDeviceOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
+          : '') +
+      '</td></tr>';
   }
-  renderDeviceTable();
-  showMsg('deviceOrderMsg', '\u21BB ' + orders.length + ' pending order(s) loaded', 'success');
+  tbody.innerHTML = html;
+}
+
+async function approvePendingDeviceOrder(orderNum, btn) {
+  if (!confirm('Approve order ' + orderNum + '?')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('approveDeviceOrder', { orderNum });
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
+  if (result?.success) {
+    showMsg('devicePendingMsg', '\u2705 Approved ' + orderNum, 'success');
+    loadDevicePending();
+  } else {
+    showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
 }
 </script>
 </body>

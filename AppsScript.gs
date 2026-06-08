@@ -275,6 +275,9 @@ function doPost(e) {
       case 'saveDeviceOrder':
         result = saveDeviceOrderToSheet(data);
         break;
+      case 'getSavedDeviceOrders':
+        result = fetchSavedDeviceOrders();
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -985,4 +988,31 @@ function saveDeviceOrderToSheet(data) {
     data.status || 'Pending',
   ]);
   return { success: true };
+}
+
+function fetchSavedDeviceOrders() {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { success: true, data: [] };
+  const data = [];
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    data.push({
+      date: String(r[0] || ''),
+      orderId: String(r[1] || ''),
+      partnerNum: String(r[2] || ''),
+      partnerName: String(r[3] || ''),
+      articleNum: String(r[4] || ''),
+      productName: String(r[5] || ''),
+      qty: String(r[6] || ''),
+      dealerPrice: String(r[7] || ''),
+      totalAmount: String(r[8] || ''),
+      status: String(r[9] || 'Pending'),
+    });
+  }
+  return { success: true, data: data };
 }
