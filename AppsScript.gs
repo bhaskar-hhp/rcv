@@ -856,7 +856,7 @@ function fetchDeviceProducts() {
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
   const custNum = userInfo.CustomerNum || '660002825';
-  const path = "/api/dsm-orders/ProductListOSSet?userType=ZD&ICustomer='" + custNum + "'";
+  const path = "/api/dsm-orders/ProductListOSSet?UserInd=ZD&ProductGrp=76&SoldToParty=" + custNum + "&ProductDiv=BA&PriceGrp=DI&OrderType=ZBHA&ProcInd=L";
   const result = jioApi('GET', path, null, fullName, userId);
   if (result.status === 200) {
     return { success: true, data: Array.isArray(result.data) ? result.data : [] };
