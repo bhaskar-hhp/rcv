@@ -902,11 +902,22 @@ function createDeviceOrderApi(data) {
     CREATEHEADNAV: [{ ArticleNum: data.articleNum, UoM: 'EA', TargetQty: String(data.qty) }],
   };
   const result = jioApi('POST', '/api/dsm-orders/post-Order-Create?userType=ZD', body, fullName, userId);
-  if (result.status === 200) {
-    const orderNum = result.data?.OrderNum || result.data?.orderNum || '';
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    const sapMsg = item?.headers?.['sap-message'];
+    let orderNum = '';
+    if (sapMsg) {
+      try {
+        const parsed = JSON.parse(sapMsg);
+        const match = (parsed.message || '').match(/Order\s+(\d+)/);
+        if (match) orderNum = match[1];
+      } catch (e) {}
+    }
+    if (!orderNum) orderNum = item?.body?.d?.OrderNum || item?.body?.d?.orderNum || '';
     return { success: true, orderNum: String(orderNum), data: result.data };
   }
-  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
 }
 
 function approveDeviceOrderApi(orderNum) {
@@ -917,11 +928,13 @@ function approveDeviceOrderApi(orderNum) {
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
   const body = { userType: 'ZD', OrderNum: String(orderNum), ReleaseInd: 'Z5' };
-  const result = jioApi('PUT', '/api/dsm-orders/put-approval-set', body, fullName, userId);
-  if (result.status === 200) {
+  const result = jioApi('PUT', '/api/dsm-orders/put-approval-set?userType=ZD', body, fullName, userId);
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
     return { success: true, data: result.data };
   }
-  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
 }
 
 function fetchPendingDeviceOrders(from, to) {
@@ -932,10 +945,13 @@ function fetchPendingDeviceOrders(from, to) {
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
   const result = jioApi('GET', '/api/dsm-orders/order-displayList-set?statusCode=P', null, fullName, userId);
-  if (result.status === 200) {
-    return { success: true, data: Array.isArray(result.data) ? result.data : [] };
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    const orders = Array.isArray(item?.body?.d?.results) ? item.body.d.results : [];
+    return { success: true, data: orders };
   }
-  return { success: false, error: 'HTTP ' + result.status, data: result.data };
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
 }
 
 function saveDeviceOrderToSheet(data) {
