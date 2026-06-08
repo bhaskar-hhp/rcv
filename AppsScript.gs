@@ -945,13 +945,31 @@ function fetchPendingDeviceOrders(from, to) {
   const fullName = startup.fullName || props.userName;
   const userId = startup.id || props.userId;
   const result = jioApi('GET', '/api/dsm-orders/order-displayList-set?statusCode=P', null, fullName, userId);
-  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+
+  const item = Array.isArray(result.data) ? result.data[0] : null;
   const bizStatus = item?.statusCode || result.status;
-  if (bizStatus === 200 || bizStatus === 201) {
-    const orders = Array.isArray(item?.body?.d?.results) ? item.body.d.results : [];
-    return { success: true, data: orders };
+
+  if (bizStatus !== 200 && bizStatus !== 201 && result.status !== 200) {
+    return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
   }
-  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
+
+  // Direct array of orders (e.g. partner-style response)
+  if (Array.isArray(result.data) && result.data.length > 0 && (result.data[0]?.OrderNum || result.data[0]?.orderNum)) {
+    return { success: true, data: result.data };
+  }
+
+  // Gateway-wrapped: [ {statusCode, body: {d: {results: [...]}}} ]
+  const results = item?.body?.d?.results;
+  if (Array.isArray(results)) {
+    return { success: true, data: results };
+  }
+
+  // Response might be the array itself
+  if (Array.isArray(result.data)) {
+    return { success: true, data: result.data };
+  }
+
+  return { success: true, data: [] };
 }
 
 function saveDeviceOrderToSheet(data) {
