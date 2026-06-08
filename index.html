@@ -1823,11 +1823,13 @@ async function approvePendingDeviceOrder(orderNum, btn) {
   if (!confirm('Approve order ' + orderNum + '?')) return;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const result = await callScript('approveDeviceOrder', { orderNum });
-  if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
   if (result?.success) {
+    await callScript('updateDeviceOrderStatus', { orderId: orderNum, status: 'Approved' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u2705 Approved ' + orderNum, 'success');
     loadDevicePending();
   } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
   }
 }

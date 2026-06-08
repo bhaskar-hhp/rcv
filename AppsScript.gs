@@ -278,6 +278,9 @@ function doPost(e) {
       case 'getSavedDeviceOrders':
         result = fetchSavedDeviceOrders();
         break;
+      case 'updateDeviceOrderStatus':
+        result = updateDeviceOrderStatus(data.orderId, data.status);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -1015,4 +1018,20 @@ function fetchSavedDeviceOrders() {
     });
   }
   return { success: true, data: data };
+}
+
+function updateDeviceOrderStatus(orderId, newStatus) {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    if (String(rows[i][1] || '') === String(orderId)) {
+      sheet.getRange(i + 1, 10).setValue(newStatus || 'Approved');
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'Order not found: ' + orderId };
 }
