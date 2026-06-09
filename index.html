@@ -271,7 +271,7 @@
         <div id="deviceOrderMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevice(this.checked)"></th>
-          <th>Date</th><th>Partner</th><th>Product</th><th>Qty</th><th>Dealer Price</th><th>Total</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
+          <th>Date</th><th>Partner</th><th>Balance</th><th>Product</th><th>Qty</th><th>Dealer Price</th><th>Total</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
       </div>
       <!-- Pending sub-tab -->
@@ -1463,7 +1463,7 @@ async function initDeviceTab() {
   document.querySelectorAll('#deviceSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#deviceSubTabs .gst-tab[data-dtab="create"]').classList.add('active');
   try {
-    await Promise.all([loadDeviceProducts(), loadAllPartners()]);
+    await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally()]);
   } catch (e) {
     showMsg('deviceOrderMsg', 'Failed to load: ' + e.message, 'error');
   }
@@ -1500,6 +1500,11 @@ async function loadAllPartners() {
   renderDeviceTable();
 }
 
+async function loadDeviceTally() {
+  const result = await callScript('getTallyData');
+  deviceTallyMap = (result?.data) || {};
+}
+
 function renderDeviceTable() {
   const tbody = document.getElementById('deviceRowsBody');
   if (!tbody) return;
@@ -1512,6 +1517,8 @@ function renderDeviceTable() {
     const total = r.qty ? (parseInt(r.qty) * dealerPrice).toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
     const statusColor = r.status === 'Approved' ? 'badge-success' : r.status === 'Created' ? 'badge-pending' : 'badge-error';
     const isLocked = r.status === 'Created' || r.status === 'Approved';
+    const balRaw = lookupTallyBalance(r.partnerName, deviceTallyMap);
+    const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
 
     const partName = (r.partnerName || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -1533,6 +1540,7 @@ function renderDeviceTable() {
           <div class="partner-dropdown" id="partnerDropdown_${r.id}"></div>
         </div>
       </td>
+      <td style="font-size:.7rem;text-align:right;${bal != null && bal < 0 ? 'color:#dc2626' : ''}">${bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')}</td>
       <td><select onchange="onDeviceProductChange(${r.id},this)" style="max-width:180px;font-size:.7rem;padding:4px 6px" ${isLocked ? 'disabled' : ''}>${prodOpt}</select></td>
       <td><input type="number" value="${r.qty}" min="1" style="width:60px;font-size:.7rem;padding:4px 6px" onchange="onDeviceQtyChange(${r.id},this.value)" ${isLocked ? 'readonly' : ''}></td>
       <td style="font-weight:600">\u20B9 ${dealerPrice.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
@@ -1547,7 +1555,7 @@ function renderDeviceTable() {
     </tr>`;
   }
   if (!deviceRows.length) {
-    html = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
+    html = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
   }
   tbody.innerHTML = html;
   document.getElementById('deviceSelCount').textContent = deviceSelRows.size;
@@ -1611,6 +1619,7 @@ function selectPartner(id, num) {
   const input = document.getElementById('partnerInput_' + id);
   if (input) input.value = row.partnerName;
   hidePartnerDropdown(id);
+  renderDeviceTable();
 }
 
 function hidePartnerDropdown(id) {
