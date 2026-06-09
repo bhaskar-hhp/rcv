@@ -283,7 +283,7 @@
         </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
+          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
       </div>
     </div>
@@ -1828,7 +1828,7 @@ function renderDevicePending() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -1839,7 +1839,8 @@ function renderDevicePending() {
     html += '<tr>' +
       '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
-      '<td style="font-size:.7rem">' + (o.partnerName || o.partnerNum || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
+      '<td style="font-size:.7rem;color:#64748b">' + (o.partnerNum || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
       '<td style="text-align:center">' + o.qty + '</td>' +
       '<td>\u20B9 ' + (parseFloat(o.dealerPrice || 0)).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</td>' +
