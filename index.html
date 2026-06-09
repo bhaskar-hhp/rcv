@@ -264,9 +264,9 @@
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <button class="btn-primary" onclick="batchCreateDeviceOrders()">Create Selected</button>
-          <button class="btn-sm btn-outline" onclick="batchApproveDeviceOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
-          <button class="btn-sm btn-outline" onclick="batchCreateAndApproveDeviceOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
+          <button class="btn-primary" id="batchCreateBtn" onclick="batchCreateDeviceOrders()">Create Selected</button>
+          <button class="btn-sm btn-outline" id="batchApproveBtn" onclick="batchApproveDeviceOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
+          <button class="btn-sm btn-outline" id="batchCreateApproveBtn" onclick="batchCreateAndApproveDeviceOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="deviceSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addDeviceRow()" style="margin-left:auto">+ Add Row</button>
         </div>
@@ -1701,7 +1701,7 @@ async function approveDeviceOrderSingle(btn, id) {
 async function batchCreateDeviceOrders() {
   if (!deviceSelRows.size) { showMsg('deviceOrderMsg', 'Select rows to create.', 'error'); return; }
   if (!confirm('Create ' + deviceSelRows.size + ' order(s)?')) return;
-  const btn = document.querySelector('#deviceOrderForm .btn-primary');
+  const btn = document.getElementById('batchCreateBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...';
   let count = 0;
   for (const id of deviceSelRows) {
@@ -1735,7 +1735,7 @@ async function batchCreateDeviceOrders() {
 async function batchApproveDeviceOrders() {
   if (!deviceSelRows.size) { showMsg('deviceOrderMsg', 'Select rows to approve.', 'error'); return; }
   if (!confirm('Approve ' + deviceSelRows.size + ' order(s)?')) return;
-  const btn = document.querySelector('#deviceOrderForm .btn-outline[style*="color:#16a34a"]');
+  const btn = document.getElementById('batchApproveBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Approving...';
   let count = 0;
   for (const id of deviceSelRows) {
@@ -1756,7 +1756,7 @@ async function batchApproveDeviceOrders() {
 async function batchCreateAndApproveDeviceOrders() {
   if (!deviceSelRows.size) { showMsg('deviceOrderMsg', 'Select rows to process.', 'error'); return; }
   if (!confirm('Create & Approve ' + deviceSelRows.size + ' order(s)?')) return;
-  const btn = document.querySelector('#deviceOrderForm .btn-outline[style*="color:#6366f1"]');
+  const btn = document.getElementById('batchCreateApproveBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...';
   let created = 0, approved = 0;
   for (const id of deviceSelRows) {
