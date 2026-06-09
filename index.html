@@ -273,7 +273,7 @@
         <div id="deviceOrderMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevice(this.checked)"></th>
-          <th>Date</th><th>Partner</th><th>Balance</th><th>Product</th><th>Qty</th><th>Dealer Price</th><th>Total</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
+          <th>Date</th><th>Partner</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
       </div>
       <!-- Pending sub-tab -->
@@ -283,9 +283,13 @@
           <label style="font-size:.7rem;color:#64748b">From: <input type="date" id="dpFromDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
           <label style="font-size:.7rem;color:#64748b">To: <input type="date" id="dpToDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
         </div>
+        <div style="display:flex;gap:4px;margin:10px 0" id="dpSubTabs">
+          <button class="gst-tab active" data-dpfilter="pending">Pending</button>
+          <button class="gst-tab" data-dpfilter="all">All</button>
+        </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Balance</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
+          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
       </div>
     </div>
@@ -1227,6 +1231,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab === 'pending') loadDevicePending();
       });
     });
+    document.querySelectorAll('#dpSubTabs .gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('#dpSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        renderDevicePending();
+      });
+    });
     // Default: New tab (form visible)
     document.getElementById('newOrderForm').style.display = 'flex';
     document.getElementById('gstWrap').style.display = 'none';
@@ -1521,7 +1532,6 @@ function renderDeviceTable() {
     const today = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
     const product = deviceProducts.find(p => (p.ArticleNum || p.articleNum || '') === r.articleNum);
     const dealerPrice = parseFloat(product?.DealerPrice || product?.dealerPrice || r.dealerPrice || 0);
-    const total = r.qty ? (parseInt(r.qty) * dealerPrice).toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
     const statusColor = r.status === 'Approved' ? 'badge-success' : r.status === 'Created' ? 'badge-pending' : 'badge-error';
     const isLocked = r.status === 'Created' || r.status === 'Approved';
     const balRaw = lookupTallyBalance(r.partnerName, deviceTallyMap);
@@ -1550,8 +1560,6 @@ function renderDeviceTable() {
       <td style="font-size:.7rem;text-align:right;${bal != null ? (bal < 0 ? 'color:#dc2626' : 'color:#16a34a') : ''}">${bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')}</td>
       <td><select onchange="onDeviceProductChange(${r.id},this)" style="max-width:180px;font-size:.7rem;padding:4px 6px" ${isLocked ? 'disabled' : ''}>${prodOpt}</select></td>
       <td><input type="number" value="${r.qty}" min="1" style="width:60px;font-size:.7rem;padding:4px 6px" onchange="onDeviceQtyChange(${r.id},this.value)" ${isLocked ? 'readonly' : ''}></td>
-      <td style="font-weight:600">\u20B9 ${dealerPrice.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-      <td style="font-weight:600">\u20B9 ${total}</td>
       <td><span class="badge ${statusColor}">${r.status}</span></td>
       <td><input type="text" value="${r.orderId}" readonly placeholder="—" style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9"></td>
       <td style="text-align:center;white-space:nowrap">
@@ -1562,7 +1570,7 @@ function renderDeviceTable() {
     </tr>`;
   }
   if (!deviceRows.length) {
-    html = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
+    html = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
   }
   tbody.innerHTML = html;
   document.getElementById('deviceSelCount').textContent = deviceSelRows.size;
@@ -1782,6 +1790,7 @@ async function batchCreateAndApproveDeviceOrders() {
       const appResult = await callScript('approveDeviceOrder', { orderNum: result.orderNum });
       if (appResult?.success) {
         row.status = 'Approved';
+        await callScript('updateDeviceOrderStatus', { orderId: result.orderNum, status: 'Approved' });
         approved++;
       }
     }
@@ -1838,6 +1847,12 @@ function renderDevicePending() {
   const tbody = document.getElementById('devicePendingBody');
 
   let filtered = devicePendingOrders;
+
+  const activeFilter = document.querySelector('#dpSubTabs .gst-tab.active')?.dataset?.dpfilter || 'pending';
+  if (activeFilter === 'pending') {
+    filtered = filtered.filter(o => o.status === 'Created');
+  }
+
   if (fromVal || toVal) {
     filtered = filtered.filter(o => {
       const ym = toYmd(o.date);
@@ -1849,14 +1864,13 @@ function renderDevicePending() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
   let html = '';
   for (const o of filtered) {
     const statusColor = o.status === 'Approved' ? 'badge-success' : o.status === 'Created' ? 'badge-pending' : 'badge-error';
-    const total = o.qty && o.dealerPrice ? (parseFloat(o.qty) * parseFloat(o.dealerPrice)).toLocaleString('en-IN', {minimumFractionDigits:2}) : o.totalAmount;
     const balRaw = lookupTallyBalance(o.partnerName, deviceTallyMap);
     const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
     html += '<tr>' +
@@ -1867,8 +1881,6 @@ function renderDevicePending() {
       '<td style="font-size:.7rem;text-align:right;' + (bal != null ? (bal < 0 ? 'color:#dc2626' : 'color:#16a34a') : '') + '">' + (bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')) + '</td>' +
       '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
       '<td style="text-align:center">' + o.qty + '</td>' +
-      '<td>\u20B9 ' + (parseFloat(o.dealerPrice || 0)).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</td>' +
-      '<td>\u20B9 ' + total + '</td>' +
       '<td><span class="badge ' + statusColor + '">' + o.status + '</span></td>' +
       '<td style="text-align:center">' +
         (o.status === 'Created'
