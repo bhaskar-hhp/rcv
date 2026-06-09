@@ -936,6 +936,7 @@ async function batchComplete() {
     const row = gstAllRows.find(r => r.rowIndex === idx);
     if (row && row.partner === 'SELF') {
       await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+      await callScript('completeRow', { rowIndex: idx });
     } else {
       await callScript('completeRow', { rowIndex: idx });
     }
@@ -1114,8 +1115,9 @@ async function completeGstRow(btn, rowIndex) {
   if (row.partner === 'SELF') {
     if (!confirm('Mark as Transferred?')) return;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-    const result = await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
-    if (result?.success) {
+    const remarkResult = await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
+    const completeResult = await callScript('completeRow', { rowIndex });
+    if (remarkResult?.success || completeResult?.success) {
       gstLoaded = false;
       loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
     } else {
