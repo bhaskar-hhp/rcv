@@ -1338,12 +1338,15 @@ async function searchOrders() {
   }
   let html = `<table><thead><tr><th>Ledger Name</th><th>Closing Balance</th></tr></thead><tbody>`;
   for (const [name, bal] of entries) {
-    const balNum = parseFloat(bal.replace(/,/g, ''));
+    const balNum = parseFloat(String(bal || '').replace(/,/g, ''));
     const color = balNum > 0 ? '#16a34a' : balNum < 0 ? '#ef4444' : '#64748b';
-    html += `<tr><td>${name}</td><td style="color:${color};font-weight:600">${bal}</td></tr>`;
+    const safeName = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeBal = String(bal || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<tr><td>${safeName}</td><td style="color:${color};font-weight:600">${safeBal}</td></tr>`;
   }
   html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${entries.length} match(es)</p>`;
   wrap.innerHTML = html;
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Search'; }
 }
 
 // ── Reco ─────────────────────────────────────────────────────────
