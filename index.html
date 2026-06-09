@@ -260,6 +260,7 @@
       <div style="display:flex;gap:4px;margin:10px 0" id="deviceSubTabs">
         <button class="gst-tab active" data-dtab="create">Create</button>
         <button class="gst-tab" data-dtab="pending">Pending</button>
+        <button class="gst-tab" data-dtab="all">All</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -282,10 +283,6 @@
           <button class="btn-primary btn-sm" onclick="loadDevicePending()">↻ Refresh</button>
           <label style="font-size:.7rem;color:#64748b">From: <input type="date" id="dpFromDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
           <label style="font-size:.7rem;color:#64748b">To: <input type="date" id="dpToDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
-        </div>
-        <div style="display:flex;gap:4px;margin:10px 0" id="dpSubTabs">
-          <button class="gst-tab active" data-dpfilter="pending">Pending</button>
-          <button class="gst-tab" data-dpfilter="all">All</button>
         </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
@@ -1227,15 +1224,8 @@ document.addEventListener('DOMContentLoaded', () => {
         t.classList.add('active');
         const tab = t.dataset.dtab;
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
-        document.getElementById('devicePendingTab').style.display = tab === 'pending' ? 'flex' : 'none';
-        if (tab === 'pending') loadDevicePending();
-      });
-    });
-    document.querySelectorAll('#dpSubTabs .gst-tab').forEach(t => {
-      t.addEventListener('click', () => {
-        document.querySelectorAll('#dpSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
-        renderDevicePending();
+        document.getElementById('devicePendingTab').style.display = (tab === 'pending' || tab === 'all') ? 'flex' : 'none';
+        if (tab === 'pending' || tab === 'all') loadDevicePending();
       });
     });
     // Default: New tab (form visible)
@@ -1848,8 +1838,8 @@ function renderDevicePending() {
 
   let filtered = devicePendingOrders;
 
-  const activeFilter = document.querySelector('#dpSubTabs .gst-tab.active')?.dataset?.dpfilter || 'pending';
-  if (activeFilter === 'pending') {
+  const activeTab = document.querySelector('#deviceSubTabs .gst-tab.active')?.dataset?.dtab;
+  if (activeTab === 'pending') {
     filtered = filtered.filter(o => o.status === 'Created');
   }
 
