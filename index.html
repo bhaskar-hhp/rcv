@@ -283,7 +283,7 @@
         </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
+          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Balance</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
       </div>
     </div>
@@ -1777,6 +1777,7 @@ async function batchCreateAndApproveDeviceOrders() {
 }
 
 let devicePendingOrders = [];
+let deviceTallyMap = {};
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -1805,9 +1806,13 @@ function toYmd(d) {
 async function loadDevicePending() {
   const btn = document.querySelector('#devicePendingTab .btn-primary');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  const result = await callScript('getSavedDeviceOrders');
+  const [orderResult, tallyResult] = await Promise.all([
+    callScript('getSavedDeviceOrders'),
+    callScript('getTallyData')
+  ]);
   if (btn) { btn.disabled = false; btn.innerHTML = '\u21BB Refresh'; }
-  devicePendingOrders = Array.isArray(result?.data) ? result.data : [];
+  devicePendingOrders = Array.isArray(orderResult?.data) ? orderResult.data : [];
+  deviceTallyMap = (tallyResult?.data) || {};
   renderDevicePending();
 }
 
@@ -1828,7 +1833,7 @@ function renderDevicePending() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -1836,11 +1841,14 @@ function renderDevicePending() {
   for (const o of filtered) {
     const statusColor = o.status === 'Approved' ? 'badge-success' : o.status === 'Created' ? 'badge-pending' : 'badge-error';
     const total = o.qty && o.dealerPrice ? (parseFloat(o.qty) * parseFloat(o.dealerPrice)).toLocaleString('en-IN', {minimumFractionDigits:2}) : o.totalAmount;
+    const balRaw = lookupTallyBalance(o.partnerName, deviceTallyMap);
+    const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
     html += '<tr>' +
       '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
       '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem;color:#64748b">' + (o.partnerNum || '') + '</td>' +
+      '<td style="font-size:.7rem;text-align:right;' + (bal != null && bal < 0 ? 'color:#dc2626' : '') + '">' + (bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')) + '</td>' +
       '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
       '<td style="text-align:center">' + o.qty + '</td>' +
       '<td>\u20B9 ' + (parseFloat(o.dealerPrice || 0)).toLocaleString('en-IN', {minimumFractionDigits:2}) + '</td>' +
