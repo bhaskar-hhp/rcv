@@ -327,7 +327,7 @@
         <div id="simOrderMsg" class="msg"></div>
 
         <div style="display:flex;gap:4px;margin:10px 0" id="simSubTabs">
-          <button class="gst-tab active" data-simfilter="pending">Pending</button>
+          <button class="gst-tab active" data-simfilter="open">Open</button>
           <button class="gst-tab" data-simfilter="all">All</button>
         </div>
 
@@ -1972,7 +1972,7 @@ let simNameData = [];
 function initSimTab() {
   document.getElementById('simOrderMsg').className = 'msg';
   document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
-  document.querySelector('#simSubTabs .gst-tab[data-simfilter="pending"]').classList.add('active');
+  document.querySelector('#simSubTabs .gst-tab[data-simfilter="open"]').classList.add('active');
   const to = new Date();
   const from = new Date(to);
   document.getElementById('simDateTo').value = to.toISOString().slice(0,10);
@@ -2123,10 +2123,10 @@ function mapJioSimOrder(r) {
 
 function renderSimSaved() {
   const tbody = document.getElementById('simSavedBody');
-  const activeFilter = document.querySelector('#simSubTabs .gst-tab.active')?.dataset?.simfilter || 'pending';
+  const activeFilter = document.querySelector('#simSubTabs .gst-tab.active')?.dataset?.simfilter || 'open';
 
   let filtered = simSavedOrders;
-  if (activeFilter === 'pending') {
+  if (activeFilter === 'open') {
     filtered = filtered.filter(o => o.statusDesc === 'Pending For Approval');
   }
 
