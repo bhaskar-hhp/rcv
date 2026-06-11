@@ -1968,7 +1968,7 @@ function initSimTab() {
   document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#simSubTabs .gst-tab[data-simfilter="pending"]').classList.add('active');
   const to = new Date();
-  const from = new Date(to.getTime() - 30 * 86400000);
+  const from = new Date(to);
   document.getElementById('simDateTo').value = to.toISOString().slice(0,10);
   document.getElementById('simDateFrom').value = from.toISOString().slice(0,10);
   loadSimSaved(formatDateToParam(from), formatDateToParam(to));
