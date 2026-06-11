@@ -263,7 +263,6 @@
         <button class="gst-tab active" data-dtab="create">Create</button>
         <button class="gst-tab" data-dtab="pending">Pending</button>
         <button class="gst-tab" data-dtab="all">All</button>
-        <button class="gst-tab" data-dtab="balance">Balance</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -271,6 +270,8 @@
           <button class="btn-primary" id="batchCreateBtn" onclick="batchCreateDeviceOrders()">Create Selected</button>
           <button class="btn-sm btn-outline" id="batchApproveBtn" onclick="batchApproveDeviceOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
           <button class="btn-sm btn-outline" id="batchCreateApproveBtn" onclick="batchCreateAndApproveDeviceOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
+          <input type="text" id="deviceBalanceInput" placeholder="Search balance..." style="width:140px;padding:4px 8px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:6px;margin-left:auto">
+          <button class="btn-sm btn-outline" id="deviceBalanceBtn" onclick="searchDeviceBalance()" style="color:#6366f1;border-color:#6366f1">Search</button>
           <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="deviceSelCount">0</span> selected</span>
           <button class="btn-sm btn-outline" onclick="addDeviceRow()" style="margin-left:auto">+ Add Row</button>
         </div>
@@ -279,6 +280,7 @@
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevice(this.checked)"></th>
           <th>Date</th><th>Partner</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
+        <div id="deviceBalanceResults" style="margin-top:8px"></div>
       </div>
       <!-- Pending sub-tab -->
       <div id="devicePendingTab" style="display:none;flex-direction:column;gap:8px">
@@ -388,14 +390,6 @@
         <li>Copy the URL → paste in the field above</li>
         <li>Click <strong>Push to Apps Script</strong> to send JIO_COOKIES</li>
       </ol>
-      </div>
-      <!-- Balance Search sub-tab -->
-      <div id="deviceBalanceTab" style="display:none;flex-direction:column;gap:8px">
-        <div class="row" style="gap:8px">
-          <input type="text" id="deviceBalanceInput" placeholder="Search ledger name..." style="flex:1;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
-          <button class="btn-primary" id="deviceBalanceBtn" onclick="searchDeviceBalance()">Search</button>
-        </div>
-        <div id="deviceBalanceResults"><p style="color:#999">Enter a ledger name and click Search.</p></div>
       </div>
     </div>
   </div>
@@ -1327,7 +1321,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = t.dataset.dtab;
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('devicePendingTab').style.display = (tab === 'pending' || tab === 'all') ? 'flex' : 'none';
-        document.getElementById('deviceBalanceTab').style.display = tab === 'balance' ? 'flex' : 'none';
         if (tab === 'pending' || tab === 'all') loadDevicePending();
       });
     });
