@@ -263,6 +263,7 @@
         <button class="gst-tab active" data-dtab="create">Create</button>
         <button class="gst-tab" data-dtab="pending">Pending</button>
         <button class="gst-tab" data-dtab="all">All</button>
+        <button class="gst-tab" data-dtab="balance">Balance</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -387,9 +388,17 @@
         <li>Copy the URL → paste in the field above</li>
         <li>Click <strong>Push to Apps Script</strong> to send JIO_COOKIES</li>
       </ol>
+      </div>
+      <!-- Balance Search sub-tab -->
+      <div id="deviceBalanceTab" style="display:none;flex-direction:column;gap:8px">
+        <div class="row" style="gap:8px">
+          <input type="text" id="deviceBalanceInput" placeholder="Search ledger name..." style="flex:1;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+          <button class="btn-primary" id="deviceBalanceBtn" onclick="searchDeviceBalance()">Search</button>
+        </div>
+        <div id="deviceBalanceResults"><p style="color:#999">Enter a ledger name and click Search.</p></div>
+      </div>
     </div>
   </div>
-</div>
 
 <script>
 const CONFIG_KEY = 'rcv_jio_config';
@@ -1318,6 +1327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = t.dataset.dtab;
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('devicePendingTab').style.display = (tab === 'pending' || tab === 'all') ? 'flex' : 'none';
+        document.getElementById('deviceBalanceTab').style.display = tab === 'balance' ? 'flex' : 'none';
         if (tab === 'pending' || tab === 'all') loadDevicePending();
       });
     });
@@ -1423,6 +1433,34 @@ async function approveOrder(btn, orderNum, amount) {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     wrap.innerHTML = '<p style="color:#dc2626">Error: ' + (result?.error || 'Failed to approve') + '</p>';
   }
+}
+
+async function searchDeviceBalance() {
+  const q = document.getElementById('deviceBalanceInput').value.trim().toLowerCase();
+  if (!q) return;
+  const btn = document.getElementById('deviceBalanceBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const wrap = document.getElementById('deviceBalanceResults');
+  wrap.innerHTML = '<p style="color:#999"><span class="spinner"></span> Searching...</p>';
+  const result = await callScript('getTallyData');
+  const map = result?.data || {};
+  const entries = Object.entries(map).filter(([name]) => name.toLowerCase().includes(q));
+  if (!entries.length) {
+    wrap.innerHTML = '<p style="color:#999">No matches found.</p>';
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Search'; }
+    return;
+  }
+  let html = `<table><thead><tr><th>Ledger Name</th><th>Closing Balance</th></tr></thead><tbody>`;
+  for (const [name, bal] of entries) {
+    const balNum = parseFloat(String(bal || '').replace(/,/g, ''));
+    const color = balNum > 0 ? '#16a34a' : balNum < 0 ? '#ef4444' : '#64748b';
+    const safeName = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeBal = String(bal || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<tr><td>${safeName}</td><td style="color:${color};font-weight:600">${safeBal}</td></tr>`;
+  }
+  html += `</tbody></table><p style="margin-top:8px;color:#666;font-size:.8rem">${entries.length} match(es)</p>`;
+  wrap.innerHTML = html;
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Search'; }
 }
 
 async function searchOrders() {
