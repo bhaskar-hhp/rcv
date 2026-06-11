@@ -127,6 +127,7 @@
       <span style="display:flex;align-items:center;gap:4px">Balance: <strong id="hdrBalance">—</strong></span>
       <span style="display:flex;align-items:center;gap:4px"><strong id="hdrJioBalance" style="color:#16a34a;font-weight:600">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
       <span style="display:flex;align-items:center;gap:4px">Primary: <strong id="hdrPrimary">—</strong><span onclick="loadClosingBalance()" style="cursor:pointer;font-size:.8rem;opacity:.6" title="Refresh">↻</span></span>
+      <span style="display:flex;align-items:center;gap:4px">Connectivity: <strong id="hdrConnectivity">—</strong></span>
     </div>
     <div class="menu-wrapper">
       <button class="hamburger" id="menuToggle" onclick="toggleMenu()">
@@ -598,6 +599,9 @@ async function loadClosingBalance() {
   callScript('getJioBalance').then(jioResult => {
     if (jioResult?.success && jioResult.jioBalance !== undefined) {
       document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(jioResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
+    }
+    if (jioResult?.avlCreditLimit) {
+      document.getElementById('hdrConnectivity').textContent = jioResult.avlCreditLimit;
     }
   });
 }

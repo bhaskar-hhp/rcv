@@ -448,7 +448,8 @@ function getJioBalance() {
   if (result.status === 200) {
     const arr = Array.isArray(result.data) ? result.data : (result.data?.d?.results || []);
     const amt = arr[0]?.AvailableAmt || arr[0]?.availableAmt || '0';
-    return { success: true, jioBalance: parseFloat(amt) };
+    const credit = arr[0]?.AvlCreditLimit || arr[0]?.avlCreditLimit || '';
+    return { success: true, jioBalance: parseFloat(amt), avlCreditLimit: String(credit) };
   }
   return { success: false, error: 'HTTP ' + result.status };
 }
