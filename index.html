@@ -1433,34 +1433,21 @@ async function approveOrder(btn, orderNum, amount) {
   }
 }
 
-let deviceTallyEntries = null;
-
-async function loadDeviceTally() {
-  if (deviceTallyEntries) return deviceTallyEntries;
-  const result = await callScript('getTallyData');
-  const map = result?.data || {};
-  deviceTallyEntries = Object.entries(map).map(([name, bal]) => {
-    const balNum = parseFloat(String(bal || '').replace(/,/g, ''));
-    return { name, bal: String(bal || ''), balNum };
-  });
-  return deviceTallyEntries;
-}
-
 function onDeviceBalanceInput(input) {
   const val = input.value.toLowerCase();
   const dd = document.getElementById('deviceBalanceDropdown');
-  loadDeviceTally().then(entries => {
-    const filtered = val ? entries.filter(e => e.name.toLowerCase().includes(val)) : entries;
-    let html = '';
-    for (const e of filtered) {
-      const color = e.balNum > 0 ? '#16a34a' : e.balNum < 0 ? '#ef4444' : '#64748b';
-      const safeName = e.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      html += '<div class="partner-dropdown-item" onmousedown="selectDeviceBalance(\'' + safeName.replace(/'/g,"&#39;") + '\',\'' + e.bal + '\',\'' + color + '\')">' + safeName + ' <span class="num" style="color:' + color + ';font-weight:600">' + e.bal + '</span></div>';
+  let html = '';
+  for (const [name, bal] of Object.entries(deviceTallyMap)) {
+    if (name.toLowerCase().includes(val)) {
+      const balNum = parseFloat(String(bal || '').replace(/,/g, ''));
+      const color = balNum > 0 ? '#16a34a' : balNum < 0 ? '#ef4444' : '#64748b';
+      const safeName = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+      html += '<div class="partner-dropdown-item" onmousedown="selectDeviceBalance(\'' + safeName + '\',\'' + String(bal) + '\',\'' + color + '\')">' + safeName + ' <span class="num" style="color:' + color + ';font-weight:600">' + bal + '</span></div>';
     }
-    if (!html) html = '<div class="partner-dropdown-item" style="color:#999">No matches</div>';
-    dd.innerHTML = html;
-    dd.classList.add('show');
-  });
+  }
+  if (!html) html = '<div class="partner-dropdown-item" style="color:#999">No matches</div>';
+  dd.innerHTML = html;
+  dd.classList.add('show');
 }
 
 function selectDeviceBalance(name, bal, color) {
