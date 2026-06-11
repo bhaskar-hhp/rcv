@@ -138,6 +138,7 @@
         <button class="menu-item" data-tab="orders">RCV Jio Orders</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="device-orders">Device Orders</button>
+        <button class="menu-item" data-tab="sim-orders">SIM Order</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="search">Balance Search</button>
         <button class="menu-item" data-tab="dedup">Dedup Voucher</button>
@@ -292,6 +293,14 @@
     </div>
   </div>
 
+  <!-- Tab: SIM Order -->
+  <div class="tab-pane" id="tab-sim-orders">
+    <div class="card">
+      <h2>SIM Order</h2>
+      <p style="color:#999;margin-top:8px">Coming soon.</p>
+    </div>
+  </div>
+
   <!-- Tab: Setup -->
   <div class="tab-pane" id="tab-setup">
     <div class="card">
@@ -375,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (t.dataset.tab === 'approval') fetchApprovalOrders();
       if (t.dataset.tab === 'device-orders') initDeviceTab();
+      if (t.dataset.tab === 'sim-orders') initSimTab();
       if (t.dataset.tab === 'reco') fetchRecoData();
       if (t.dataset.tab === 'dedup') loadDedupTab();
     });
@@ -1894,6 +1904,11 @@ async function approvePendingDeviceOrder(orderNum, btn) {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
   }
+}
+
+// ── SIM Order ──────────────────────────────────────────────────────
+function initSimTab() {
+  // placeholder
 }
 </script>
 </body>
