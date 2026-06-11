@@ -341,6 +341,14 @@
           <button class="gst-tab" data-simfilter="all">All</button>
         </div>
 
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <label style="font-size:.7rem;color:#64748b">From:</label>
+          <input type="date" id="simDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <label style="font-size:.7rem;color:#64748b">To:</label>
+          <input type="date" id="simDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <button class="btn-sm btn-outline" onclick="applySimDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
+        </div>
+
         <div style="overflow:visible"><table><thead><tr>
           <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="simSavedBody"></tbody></table></div>
@@ -1969,8 +1977,25 @@ function initSimTab() {
   document.getElementById('simOrderMsg').className = 'msg';
   document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#simSubTabs .gst-tab[data-simfilter="pending"]').classList.add('active');
-  loadSimSaved();
+  const to = new Date();
+  const from = new Date(to.getTime() - 30 * 86400000);
+  document.getElementById('simDateTo').value = to.toISOString().slice(0,10);
+  document.getElementById('simDateFrom').value = from.toISOString().slice(0,10);
+  loadSimSaved(formatDateToParam(from), formatDateToParam(to));
   loadSimRdsData();
+}
+
+function formatDateToParam(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day+'T00:00:00';
+}
+
+function applySimDateFilter() {
+  const from = document.getElementById('simDateFrom').value;
+  const to = document.getElementById('simDateTo').value;
+  loadSimSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
 }
 
 async function loadSimRdsData() {
@@ -2085,27 +2110,25 @@ async function approveSimOrder() {
   }
 }
 
-async function loadSimSaved() {
-  const [jioResult, sheetResult, tallyResult] = await Promise.all([
-    callScript('getPendingSimOrders'),
-    callScript('getSavedSimOrders'),
+async function loadSimSaved(from, to) {
+  const [jioResult, tallyResult] = await Promise.all([
+    callScript('getPendingSimOrders', { from, to }),
     callScript('getTallyData'),
   ]);
   const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioSimOrder) : [];
-  const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
-  simSavedOrders = { jio: jioOrders, sheet: sheetOrders };
+  simSavedOrders = jioOrders;
   simTallyMap = (tallyResult?.data) || {};
   renderSimSaved();
 }
 
 function mapJioSimOrder(r) {
   return {
-    date: r.CreatedDateTime || r.CreatedDate || r.Date || '',
-    orderId: r.OrderNum || r.OrderId || r.orderNum || '',
-    customerNum: r.ShipToParty || r.CustomerNumber || r.customerNum || '',
-    customerName: r.SoldToPartyName || r.CustomerName || r.customerName || r.PartnerName || '',
-    qty: r.TargetQty || r.Quantity || r.qty || '',
-    status: 'Created',
+    date: r.CreationDate || '',
+    orderId: r.OrderNum || '',
+    customerNum: r.CustomerNum || '',
+    customerName: r.CustName || '',
+    qty: '',
+    statusDesc: r.StatusDesc || '',
   };
 }
 
@@ -2113,25 +2136,28 @@ function renderSimSaved() {
   const tbody = document.getElementById('simSavedBody');
   const activeFilter = document.querySelector('#simSubTabs .gst-tab.active')?.dataset?.simfilter || 'pending';
 
-  let filtered = [];
+  let filtered = simSavedOrders;
   if (activeFilter === 'pending') {
-    filtered = simSavedOrders.jio || [];
-  } else {
-    filtered = simSavedOrders.sheet || [];
+    filtered = filtered.filter(o => (o.statusDesc || '').toLowerCase().includes('pending'));
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
   function fmtDate(d) {
     if (!d) return '';
-    const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+    const m = d.match(/\/Date\((\d+)\)\//);
     if (m) {
-      const a = parseInt(m[1]), b = parseInt(m[2]);
+      const dt = new Date(parseInt(m[1]));
+      if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
+    }
+    const m2 = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+    if (m2) {
+      const a = parseInt(m2[1]), b = parseInt(m2[2]);
       const day = a > 12 ? a : b, mon = a > 12 ? b : a;
-      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m[3];
+      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m2[3];
     }
     const dt = new Date(d);
     if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
@@ -2140,16 +2166,18 @@ function renderSimSaved() {
 
   let html = '';
   for (const o of filtered) {
-    const statusColor = o.status === 'Approved' ? 'badge-success' : o.status === 'Created' ? 'badge-pending' : 'badge-error';
+    const isPending = (o.statusDesc || '').toLowerCase().includes('pending');
+    const statusColor = isPending ? 'badge-pending' : 'badge-success';
+    const statusLabel = isPending ? 'Pending' : o.statusDesc || 'Completed';
     html += '<tr>' +
       '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
       '<td style="font-size:.7rem">' + (o.customerNum || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.customerName || '') + '</td>' +
-      '<td style="text-align:center">' + o.qty + '</td>' +
-      '<td><span class="badge ' + statusColor + '">' + o.status + '</span></td>' +
+      '<td style="font-size:.7rem">' + (o.qty || '') + '</td>' +
+      '<td><span class="badge ' + statusColor + '">' + statusLabel + '</span></td>' +
       '<td style="text-align:center">' +
-        (o.status === 'Created'
+        (isPending
           ? '<button class="btn-sm btn-outline" onclick="approveSimSavedOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
           : '') +
       '</td></tr>';

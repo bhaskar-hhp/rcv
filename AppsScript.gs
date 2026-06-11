@@ -297,7 +297,7 @@ function doPost(e) {
         result = updateSimOrderStatus(data.orderId, data.status);
         break;
       case 'getPendingSimOrders':
-        result = fetchPendingSimOrders(data.from, data.to);
+        result = fetchMySimOrdersList(data.from, data.to);
         break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
@@ -1113,7 +1113,7 @@ function approveSimOrderApi(orderNum) {
   return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
 }
 
-function fetchPendingSimOrders(from, to) {
+function fetchMySimOrdersList(from, to) {
   const userInfo = getUserInfo();
   if (!userInfo) return { success: false, error: 'Auth failed' };
   const props = getProps();
@@ -1126,22 +1126,12 @@ function fetchPendingSimOrders(from, to) {
   const fromDate = from || Utilities.formatDate(new Date(now.getTime() - 30 * 86400000), 'IST', "yyyy-MM-dd'T'HH:mm:ss");
   const toDate = to || Utilities.formatDate(now, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
 
-  const path = "/api/dsm-orders/order-displayList-set?userType=ZD&statusCode=P&fromDate=" + encodeURIComponent(fromDate) + "&toDate=" + encodeURIComponent(toDate) + "&soldToParty=" + custNum + "&shipToParty=";
+  const path = "/api/dsm-orders/MyOrder-List-set?UserInd=ZD&CustomerNum=" + custNum + "&DateFrom=" + encodeURIComponent(fromDate) + "&DateTo=" + encodeURIComponent(toDate) + "&StatusTyp=L&RRLInd=";
   const result = jioApi('GET', path, null, fullName, userId);
 
-  if (Array.isArray(result.data)) {
-    const simOrders = result.data.filter(r => r.OrderType === 'ZJTP');
-    return { success: true, data: simOrders };
-  }
-
-  const item = Array.isArray(result.data) ? result.data[0] : null;
-  const results = item?.body?.d?.results;
-  if (Array.isArray(results)) {
-    const simOrders = results.filter(r => r.OrderType === 'ZJTP');
-    return { success: true, data: simOrders };
-  }
-
-  return { success: true, data: [] };
+  const orders = Array.isArray(result.data) ? result.data : [];
+  const simOrders = orders.filter(r => r.OrdTypDesc === 'SIM & CAF' || r.OrderType === 'ZJTP');
+  return { success: true, data: simOrders };
 }
 
 function saveSimOrderToSheet(data) {
