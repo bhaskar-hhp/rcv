@@ -319,6 +319,7 @@
           </div>
           <div style="display:flex;gap:6px;align-items:center">
             <button class="btn-primary" onclick="createSimOrder()" style="min-width:120px">Create Order</button>
+            <button class="btn-sm btn-outline" onclick="createAndApproveSimOrder()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve</button>
             <span style="font-size:.7rem;color:#64748b">Article 920001280 (fixed)</span>
           </div>
         </div>
@@ -2027,6 +2028,40 @@ async function createSimOrder() {
   } else {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Create Order'; }
     showMsg('simOrderMsg', '\u274C ' + (result?.error || 'Create failed'), 'error');
+  }
+}
+
+async function createAndApproveSimOrder() {
+  const custNum = document.getElementById('simCustNum').value.trim();
+  const custName = document.getElementById('simCustNameInput').value.trim();
+  const qty = document.getElementById('simTargetQty').value.trim();
+  if (!custNum || !qty) { showMsg('simOrderMsg', 'Enter Customer Number and Qty.', 'error'); return; }
+  if (!confirm('Create & Approve order for ' + custName + '?')) return;
+  const btn = document.querySelector('#simOrderForm .btn-outline');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...'; }
+  const result = await callScript('createSimOrder', { shipToParty: custNum, qty });
+  if (!result?.success || !result.orderNum) {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create & Approve'; }
+    showMsg('simOrderMsg', '\u274C Create failed: ' + (result?.error || ''), 'error');
+    return;
+  }
+  const orderNum = result.orderNum;
+  await callScript('saveSimOrder', {
+    orderId: orderNum, customerNum: custNum, customerName: custName, qty, status: 'Created',
+  });
+  const appResult = await callScript('approveSimOrder', { orderNum });
+  if (appResult?.success) {
+    await callScript('updateSimOrderStatus', { orderId: orderNum, status: 'Approved' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create & Approve'; }
+    showMsg('simOrderMsg', '\u2705 Order ' + orderNum + ' created & approved', 'success');
+    document.getElementById('simCustNameInput').value = '';
+    document.getElementById('simCustNum').value = '';
+    document.getElementById('simTargetQty').value = '';
+    loadSimSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create & Approve'; }
+    showMsg('simOrderMsg', '\u2705 Created ' + orderNum + ' but approve failed: ' + (appResult?.error || ''), 'error');
+    loadSimSaved();
   }
 }
 
