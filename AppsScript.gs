@@ -400,14 +400,22 @@ function createPrimaryOrder(customerNum, basicAmount, amount) {
   };
   const orderResult = jioApi('POST', orderPath, orderBody, fullName, userId);
 
-  if (orderResult.status === 200) {
-    const data = orderResult.data;
-    const messages = (Array.isArray(data) && data[0]?.messages) || [];
-    const orderMsg = messages.find(m => m.message?.includes('Created Successfully'));
-    const orderId = orderMsg ? orderMsg.message.match(/Order\s+(\d+)/)?.[1] : null;
-    return { success: true, orderId };
+  const item = Array.isArray(orderResult.data) ? orderResult.data[0] : orderResult.data;
+  const bizStatus = item?.statusCode || orderResult.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    const sapMsg = item?.headers?.['sap-message'];
+    let orderNum = '';
+    if (sapMsg) {
+      try {
+        const parsed = JSON.parse(sapMsg);
+        const match = (parsed.message || '').match(/Order\s+(\d+)/);
+        if (match) orderNum = match[1];
+      } catch (e) {}
+    }
+    if (!orderNum) orderNum = item?.body?.d?.OrderNum || item?.body?.d?.orderNum || '';
+    return { success: true, orderId: String(orderNum) };
   }
-  return { success: false, error: 'order-create-set failed: HTTP ' + orderResult.status, data: orderResult.data };
+  return { success: false, error: 'order-create-set failed: HTTP ' + bizStatus, data: orderResult.data };
 }
 
 // ── Approve Order ─────────────────────────────────────────────────────
