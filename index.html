@@ -324,16 +324,6 @@
           </div>
         </div>
 
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:4px 0">
-
-        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-          <div style="flex:1;min-width:200px">
-            <label style="font-size:.75rem;color:#64748b">Approve Order Number</label>
-            <input type="text" id="simApproveOrderNum" placeholder="Order number" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
-          </div>
-          <button class="btn-primary" id="simApproveBtn" onclick="approveSimOrder()" style="background:#16a34a;min-width:120px">Approve Order</button>
-        </div>
-
         <div id="simOrderMsg" class="msg"></div>
 
         <div style="display:flex;gap:4px;margin:10px 0" id="simSubTabs">
@@ -2091,26 +2081,6 @@ async function createAndApproveSimOrder() {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Create & Approve'; }
     showMsg('simOrderMsg', '\u2705 Created ' + orderNum + ' but approve failed: ' + (appResult?.error || ''), 'error');
     loadSimSaved();
-  }
-}
-
-async function approveSimOrder() {
-  const orderNum = document.getElementById('simApproveOrderNum').value.trim();
-  if (!orderNum) { showMsg('simOrderMsg', 'Enter Order Number.', 'error'); return; }
-  if (!confirm('Approve order ' + orderNum + '?')) return;
-  const msgEl = document.getElementById('simOrderMsg');
-  const btn = document.getElementById('simApproveBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  const result = await callScript('approveSimOrder', { orderNum });
-  if (result?.success) {
-    await callScript('updateSimOrderStatus', { orderId: orderNum, status: 'Approved' });
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve Order'; }
-    showMsg('simOrderMsg', '\u2705 Approved ' + orderNum, 'success');
-    document.getElementById('simApproveOrderNum').value = '';
-    loadSimSaved();
-  } else {
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve Order'; }
-    showMsg('simOrderMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
   }
 }
 
