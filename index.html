@@ -1034,11 +1034,24 @@ async function batchApproveComplete() {
   if (!confirm(`Approve & Complete ${selectedRows.size} row(s)?`)) return;
   const btn = document.getElementById('batchApproveCompleteBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...'; }
+  let ok = 0, fail = 0;
   for (const idx of selectedRows) {
-    await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
-    await callScript('completeRow', { rowIndex: idx });
+    const row = gstAllRows.find(r => r.rowIndex === idx);
+    if (row && row.orderId) {
+      const result = await callScript('approveOrder', { orderNum: row.orderId, amount: row.amount });
+      if (result?.success) {
+        await callScript('updateRemark', { rowIndex: idx, remark: 'Transferred' });
+        await callScript('completeRow', { rowIndex: idx });
+        ok++;
+      } else {
+        fail++;
+      }
+    } else {
+      fail++;
+    }
   }
   if (btn) { btn.disabled = false; btn.innerHTML = 'Approve & Complete'; }
+  showMsg('gstWrap', ok + '/' + selectedRows.size + ' approved & completed' + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
   selectedRows.clear();
