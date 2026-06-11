@@ -2086,22 +2086,38 @@ async function approveSimOrder() {
 }
 
 async function loadSimSaved() {
-  const [orderResult, tallyResult] = await Promise.all([
+  const [jioResult, sheetResult, tallyResult] = await Promise.all([
+    callScript('getPendingSimOrders'),
     callScript('getSavedSimOrders'),
     callScript('getTallyData'),
   ]);
-  simSavedOrders = Array.isArray(orderResult?.data) ? orderResult.data : [];
+  const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioSimOrder) : [];
+  const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
+  simSavedOrders = { jio: jioOrders, sheet: sheetOrders };
   simTallyMap = (tallyResult?.data) || {};
   renderSimSaved();
+}
+
+function mapJioSimOrder(r) {
+  return {
+    date: r.CreatedDateTime || r.CreatedDate || r.Date || '',
+    orderId: r.OrderNum || r.OrderId || r.orderNum || '',
+    customerNum: r.ShipToParty || r.CustomerNumber || r.customerNum || '',
+    customerName: r.SoldToPartyName || r.CustomerName || r.customerName || r.PartnerName || '',
+    qty: r.TargetQty || r.Quantity || r.qty || '',
+    status: 'Created',
+  };
 }
 
 function renderSimSaved() {
   const tbody = document.getElementById('simSavedBody');
   const activeFilter = document.querySelector('#simSubTabs .gst-tab.active')?.dataset?.simfilter || 'pending';
 
-  let filtered = simSavedOrders;
+  let filtered = [];
   if (activeFilter === 'pending') {
-    filtered = filtered.filter(o => o.status === 'Created');
+    filtered = simSavedOrders.jio || [];
+  } else {
+    filtered = simSavedOrders.sheet || [];
   }
 
   if (!filtered.length) {
