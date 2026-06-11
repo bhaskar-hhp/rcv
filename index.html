@@ -300,12 +300,18 @@
       <div style="display:flex;flex-direction:column;gap:12px">
         <div id="simOrderForm" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
           <div style="flex:1;min-width:200px">
-            <label style="font-size:.75rem;color:#64748b">Customer Number</label>
-            <input type="text" id="simCustNum" placeholder="e.g. 663607559" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+            <label style="font-size:.75rem;color:#64748b">Customer Name</label>
+            <div class="partner-search-wrap">
+              <input type="text" class="partner-search-input" id="simCustNameInput" placeholder="Type to search..."
+                autocomplete="off" oninput="onSimNameInput(this)" onfocus="onSimNameInput(this)"
+                onblur="setTimeout(()=>hideSimNameDropdown(),200)" style="width:100%">
+              <div class="partner-dropdown" id="simNameDropdown"></div>
+            </div>
           </div>
           <div style="flex:1;min-width:200px">
-            <label style="font-size:.75rem;color:#64748b">Customer Name</label>
-            <input type="text" id="simCustName" placeholder="Customer name" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+            <label style="font-size:.75rem;color:#64748b">Customer Number</label>
+            <input type="text" id="simCustNum" placeholder="Auto-filled on name select" readonly
+              style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px;background:#f1f5f9">
           </div>
           <div style="flex:1;min-width:120px">
             <label style="font-size:.75rem;color:#64748b">Target Qty</label>
@@ -1956,17 +1962,52 @@ async function approvePendingDeviceOrder(orderNum, btn) {
 // ── SIM Order ──────────────────────────────────────────────────────
 let simSavedOrders = [];
 let simTallyMap = {};
+let simNameData = [];
 
 function initSimTab() {
   document.getElementById('simOrderMsg').className = 'msg';
   document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#simSubTabs .gst-tab[data-simfilter="pending"]').classList.add('active');
   loadSimSaved();
+  loadSimRdsData();
+}
+
+async function loadSimRdsData() {
+  const result = await callScript('getRdsData');
+  simNameData = Array.isArray(result?.data) ? result.data : [];
+}
+
+function onSimNameInput(input) {
+  const val = input.value.toLowerCase();
+  const dd = document.getElementById('simNameDropdown');
+  let html = '';
+  for (const r of simNameData) {
+    const name = r.a || '';
+    const num = r.b || '';
+    if (name.toLowerCase().includes(val) || num.includes(val)) {
+      const safeName = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '<div class="partner-dropdown-item" onmousedown="selectSimName(\'' + num + '\',\'' + safeName.replace(/'/g,"&#39;") + '\')">' + safeName + ' <span class="num">' + num + '</span></div>';
+    }
+  }
+  if (!html) html = '<div class="partner-dropdown-item" style="color:#999">No matches</div>';
+  dd.innerHTML = html;
+  dd.classList.add('show');
+}
+
+function selectSimName(num, name) {
+  document.getElementById('simCustNameInput').value = name;
+  document.getElementById('simCustNum').value = num;
+  hideSimNameDropdown();
+}
+
+function hideSimNameDropdown() {
+  const dd = document.getElementById('simNameDropdown');
+  if (dd) dd.classList.remove('show');
 }
 
 async function createSimOrder() {
   const custNum = document.getElementById('simCustNum').value.trim();
-  const custName = document.getElementById('simCustName').value.trim();
+  const custName = document.getElementById('simCustNameInput').value.trim();
   const qty = document.getElementById('simTargetQty').value.trim();
   if (!custNum || !qty) { showMsg('simOrderMsg', 'Enter Customer Number and Qty.', 'error'); return; }
   const msgEl = document.getElementById('simOrderMsg');
@@ -1979,8 +2020,8 @@ async function createSimOrder() {
     });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Create Order'; }
     showMsg('simOrderMsg', '\u2705 Order ' + result.orderNum + ' created', 'success');
+    document.getElementById('simCustNameInput').value = '';
     document.getElementById('simCustNum').value = '';
-    document.getElementById('simCustName').value = '';
     document.getElementById('simTargetQty').value = '';
     loadSimSaved();
   } else {
