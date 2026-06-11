@@ -600,8 +600,10 @@ async function loadClosingBalance() {
     if (jioResult?.success && jioResult.jioBalance !== undefined) {
       document.getElementById('hdrJioBalance').textContent = '\u20B9 ' + Number(jioResult.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
     }
-    if (jioResult?.avlCreditLimit) {
-      document.getElementById('hdrConnectivity').textContent = jioResult.avlCreditLimit;
+  });
+  callScript('getCustomerCredit').then(creditResult => {
+    if (creditResult?.avlCreditLimit) {
+      document.getElementById('hdrConnectivity').textContent = creditResult.avlCreditLimit;
     }
   });
 }

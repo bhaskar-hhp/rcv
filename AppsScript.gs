@@ -201,6 +201,9 @@ function doPost(e) {
       case 'getJioBalance':
         result = getJioBalance();
         break;
+      case 'getCustomerCredit':
+        result = getCustomerCredit();
+        break;
 
       case 'approveOrder':
         result = approveOrderOnJio(data.orderNum, data.amount);
@@ -450,6 +453,25 @@ function getJioBalance() {
     const amt = arr[0]?.AvailableAmt || arr[0]?.availableAmt || '0';
     const credit = arr[0]?.AvlCreditLimit || arr[0]?.avlCreditLimit || '';
     return { success: true, jioBalance: parseFloat(amt), avlCreditLimit: String(credit) };
+  }
+  return { success: false, error: 'HTTP ' + result.status };
+}
+
+function getCustomerCredit() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+  const path = "/api/dsm-orders/call-customer-credit-set?userType=ZD&customerNumber='" + custNum + "'";
+  const result = jioApi('GET', path, null, fullName, userId);
+  if (result.status === 200) {
+    const arr = Array.isArray(result.data) ? result.data : [];
+    const connectivity = arr.find(r => r.ControlArea === 'RREL');
+    const credit = connectivity?.AvlCreditLimit || '';
+    return { success: true, avlCreditLimit: String(credit), all: arr };
   }
   return { success: false, error: 'HTTP ' + result.status };
 }
