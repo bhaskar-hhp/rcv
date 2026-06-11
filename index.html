@@ -2127,11 +2127,11 @@ function renderSimSaved() {
 
   let filtered = simSavedOrders;
   if (activeFilter === 'pending') {
-    filtered = filtered.filter(o => (o.statusDesc || '').toLowerCase().includes('pending'));
+    filtered = filtered.filter(o => o.statusDesc === 'Pending For Approval');
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -2155,7 +2155,7 @@ function renderSimSaved() {
 
   let html = '';
   for (const o of filtered) {
-    const isPending = (o.statusDesc || '').toLowerCase().includes('pending');
+    const isPending = o.statusDesc === 'Pending For Approval';
     const statusColor = isPending ? 'badge-pending' : 'badge-success';
     const statusLabel = isPending ? 'Pending' : o.statusDesc || 'Completed';
     html += '<tr>' +
