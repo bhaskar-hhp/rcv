@@ -281,6 +281,21 @@ function doPost(e) {
       case 'updateDeviceOrderStatus':
         result = updateDeviceOrderStatus(data.orderId, data.status);
         break;
+      case 'createSimOrder':
+        result = createSimOrderApi(data);
+        break;
+      case 'approveSimOrder':
+        result = approveSimOrderApi(data.orderNum);
+        break;
+      case 'saveSimOrder':
+        result = saveSimOrderToSheet(data);
+        break;
+      case 'getSavedSimOrders':
+        result = fetchSavedSimOrders();
+        break;
+      case 'updateSimOrderStatus':
+        result = updateSimOrderStatus(data.orderId, data.status);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -1030,6 +1045,118 @@ function updateDeviceOrderStatus(orderId, newStatus) {
   for (let i = startRow; i < rows.length; i++) {
     if (String(rows[i][1] || '') === String(orderId)) {
       sheet.getRange(i + 1, 10).setValue(newStatus || 'Approved');
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'Order not found: ' + orderId };
+}
+
+// ── SIM Order ──────────────────────────────────────────────────────────
+
+const SIM_GID = 1261221666;
+
+function createSimOrderApi(data) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+  const body = {
+    BlockInd: 'Z5',
+    ContactPerson: '',
+    OrderType: 'ZJTP',
+    ParentPatner: custNum,
+    UserID: custNum,
+    ShipToParty: data.shipToParty,
+    SoldToParty: custNum,
+    DraftOrderNum: '',
+    CREATEHEADNAV: [{ ArticleNum: '920001280', UoM: 'EA', TargetQty: String(data.qty) }],
+  };
+  const result = jioApi('POST', '/api/dsm-orders/post-Order-Create?userType=ZD', body, fullName, userId);
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    const sapMsg = item?.headers?.['sap-message'];
+    let orderNum = '';
+    if (sapMsg) {
+      try {
+        const parsed = JSON.parse(sapMsg);
+        const match = (parsed.message || '').match(/Order\s+(\d+)/);
+        if (match) orderNum = match[1];
+      } catch (e) {}
+    }
+    if (!orderNum) orderNum = item?.body?.d?.OrderNum || item?.body?.d?.orderNum || '';
+    return { success: true, orderNum: String(orderNum), data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
+}
+
+function approveSimOrderApi(orderNum) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const body = { userType: 'ZD', OrderNum: String(orderNum), ReleaseInd: 'Z5' };
+  const result = jioApi('PUT', '/api/dsm-orders/put-approval-set', body, fullName, userId);
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
+}
+
+function saveSimOrderToSheet(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === SIM_GID)[0];
+  if (!sheet) return { success: false, error: 'SIM sheet not found' };
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy');
+  sheet.appendRow([
+    today,
+    data.orderId || '',
+    data.customerNum || '',
+    data.customerName || '',
+    data.qty || '',
+    data.status || 'Pending',
+  ]);
+  return { success: true };
+}
+
+function fetchSavedSimOrders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === SIM_GID)[0];
+  if (!sheet) return { success: false, error: 'SIM sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { success: true, data: [] };
+  const data = [];
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    data.push({
+      date: String(r[0] || ''),
+      orderId: String(r[1] || ''),
+      customerNum: String(r[2] || ''),
+      customerName: String(r[3] || ''),
+      qty: String(r[4] || ''),
+      status: String(r[5] || 'Pending'),
+    });
+  }
+  return { success: true, data: data };
+}
+
+function updateSimOrderStatus(orderId, newStatus) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === SIM_GID)[0];
+  if (!sheet) return { success: false, error: 'SIM sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    if (String(rows[i][1] || '') === String(orderId)) {
+      sheet.getRange(i + 1, 6).setValue(newStatus || 'Approved');
       return { success: true };
     }
   }

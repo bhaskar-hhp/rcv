@@ -297,7 +297,47 @@
   <div class="tab-pane" id="tab-sim-orders">
     <div class="card">
       <h2>SIM Order</h2>
-      <p style="color:#999;margin-top:8px">Coming soon.</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div id="simOrderForm" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:.75rem;color:#64748b">Customer Number</label>
+            <input type="text" id="simCustNum" placeholder="e.g. 663607559" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:.75rem;color:#64748b">Customer Name</label>
+            <input type="text" id="simCustName" placeholder="Customer name" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:.75rem;color:#64748b">Target Qty</label>
+            <input type="number" id="simTargetQty" min="1" placeholder="Qty" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn-primary" onclick="createSimOrder()" style="min-width:120px">Create Order</button>
+            <span style="font-size:.7rem;color:#64748b">Article 920001280 (fixed)</span>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:4px 0">
+
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:.75rem;color:#64748b">Approve Order Number</label>
+            <input type="text" id="simApproveOrderNum" placeholder="Order number" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
+          </div>
+          <button class="btn-primary" id="simApproveBtn" onclick="approveSimOrder()" style="background:#16a34a;min-width:120px">Approve Order</button>
+        </div>
+
+        <div id="simOrderMsg" class="msg"></div>
+
+        <div style="display:flex;gap:4px;margin:10px 0" id="simSubTabs">
+          <button class="gst-tab active" data-simfilter="pending">Pending</button>
+          <button class="gst-tab" data-simfilter="all">All</button>
+        </div>
+
+        <div style="overflow:visible"><table><thead><tr>
+          <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
+        </tr></thead><tbody id="simSavedBody"></tbody></table></div>
+      </div>
     </div>
   </div>
 
@@ -1238,6 +1278,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab === 'pending' || tab === 'all') loadDevicePending();
       });
     });
+    document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        renderSimSaved();
+      });
+    });
     // Default: New tab (form visible)
     document.getElementById('newOrderForm').style.display = 'flex';
     document.getElementById('gstWrap').style.display = 'none';
@@ -1907,8 +1954,130 @@ async function approvePendingDeviceOrder(orderNum, btn) {
 }
 
 // ── SIM Order ──────────────────────────────────────────────────────
+let simSavedOrders = [];
+let simTallyMap = {};
+
 function initSimTab() {
-  // placeholder
+  document.getElementById('simOrderMsg').className = 'msg';
+  document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
+  document.querySelector('#simSubTabs .gst-tab[data-simfilter="pending"]').classList.add('active');
+  loadSimSaved();
+}
+
+async function createSimOrder() {
+  const custNum = document.getElementById('simCustNum').value.trim();
+  const custName = document.getElementById('simCustName').value.trim();
+  const qty = document.getElementById('simTargetQty').value.trim();
+  if (!custNum || !qty) { showMsg('simOrderMsg', 'Enter Customer Number and Qty.', 'error'); return; }
+  const msgEl = document.getElementById('simOrderMsg');
+  const btn = document.querySelector('#simOrderForm .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...'; }
+  const result = await callScript('createSimOrder', { shipToParty: custNum, qty });
+  if (result?.success && result.orderNum) {
+    await callScript('saveSimOrder', {
+      orderId: result.orderNum, customerNum: custNum, customerName: custName, qty, status: 'Created',
+    });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create Order'; }
+    showMsg('simOrderMsg', '\u2705 Order ' + result.orderNum + ' created', 'success');
+    document.getElementById('simCustNum').value = '';
+    document.getElementById('simCustName').value = '';
+    document.getElementById('simTargetQty').value = '';
+    loadSimSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Create Order'; }
+    showMsg('simOrderMsg', '\u274C ' + (result?.error || 'Create failed'), 'error');
+  }
+}
+
+async function approveSimOrder() {
+  const orderNum = document.getElementById('simApproveOrderNum').value.trim();
+  if (!orderNum) { showMsg('simOrderMsg', 'Enter Order Number.', 'error'); return; }
+  if (!confirm('Approve order ' + orderNum + '?')) return;
+  const msgEl = document.getElementById('simOrderMsg');
+  const btn = document.getElementById('simApproveBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('approveSimOrder', { orderNum });
+  if (result?.success) {
+    await callScript('updateSimOrderStatus', { orderId: orderNum, status: 'Approved' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve Order'; }
+    showMsg('simOrderMsg', '\u2705 Approved ' + orderNum, 'success');
+    document.getElementById('simApproveOrderNum').value = '';
+    loadSimSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve Order'; }
+    showMsg('simOrderMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
+async function loadSimSaved() {
+  const [orderResult, tallyResult] = await Promise.all([
+    callScript('getSavedSimOrders'),
+    callScript('getTallyData'),
+  ]);
+  simSavedOrders = Array.isArray(orderResult?.data) ? orderResult.data : [];
+  simTallyMap = (tallyResult?.data) || {};
+  renderSimSaved();
+}
+
+function renderSimSaved() {
+  const tbody = document.getElementById('simSavedBody');
+  const activeFilter = document.querySelector('#simSubTabs .gst-tab.active')?.dataset?.simfilter || 'pending';
+
+  let filtered = simSavedOrders;
+  if (activeFilter === 'pending') {
+    filtered = filtered.filter(o => o.status === 'Created');
+  }
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    return;
+  }
+
+  function fmtDate(d) {
+    if (!d) return '';
+    const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+    if (m) {
+      const a = parseInt(m[1]), b = parseInt(m[2]);
+      const day = a > 12 ? a : b, mon = a > 12 ? b : a;
+      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m[3];
+    }
+    const dt = new Date(d);
+    if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
+    return d;
+  }
+
+  let html = '';
+  for (const o of filtered) {
+    const statusColor = o.status === 'Approved' ? 'badge-success' : o.status === 'Created' ? 'badge-pending' : 'badge-error';
+    html += '<tr>' +
+      '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
+      '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
+      '<td style="font-size:.7rem">' + (o.customerNum || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.customerName || '') + '</td>' +
+      '<td style="text-align:center">' + o.qty + '</td>' +
+      '<td><span class="badge ' + statusColor + '">' + o.status + '</span></td>' +
+      '<td style="text-align:center">' +
+        (o.status === 'Created'
+          ? '<button class="btn-sm btn-outline" onclick="approveSimSavedOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
+          : '') +
+      '</td></tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+async function approveSimSavedOrder(orderNum, btn) {
+  if (!confirm('Approve order ' + orderNum + '?')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('approveSimOrder', { orderNum });
+  if (result?.success) {
+    await callScript('updateSimOrderStatus', { orderId: orderNum, status: 'Approved' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
+    showMsg('simOrderMsg', '\u2705 Approved ' + orderNum, 'success');
+    loadSimSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
+    showMsg('simOrderMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
 }
 </script>
 </body>
