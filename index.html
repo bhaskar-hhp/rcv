@@ -1051,7 +1051,7 @@ async function batchApproveComplete() {
     }
   }
   if (btn) { btn.disabled = false; btn.innerHTML = 'Approve & Complete'; }
-  showMsg('gstWrap', ok + '/' + selectedRows.size + ' approved & completed' + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
+  showMsg('pendingMsg', ok + '/' + selectedRows.size + ' approved & completed' + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
   gstLoaded = false;
   loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending');
   selectedRows.clear();
@@ -1109,6 +1109,7 @@ function renderGstTable(filter, tallyMap) {
     html += `<input type="text" id="partnerFilter" placeholder="Filter by Partner" value="${document.getElementById('partnerFilter')?.value || ''}" oninput="filterByPartner()" style="width:140px;padding:4px 8px;font-size:.75rem;margin-left:auto">`;
   }
   html += `</div>
+  <div id="pendingMsg" class="msg"></div>
   <div style="overflow-x:auto"><table><thead><tr>
     <th style="width:32px"><input type="checkbox" onchange="toggleAll(this.checked)"></th>
     <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th><th>Received</th>
@@ -1258,8 +1259,7 @@ async function batchApprove() {
   }
   if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
   if (err) {
-    const wrap = document.getElementById('gstWrap');
-    wrap.innerHTML = '<p style="color:#dc2626">' + err + '</p>';
+    showMsg('pendingMsg', err, 'error');
     return;
   }
   gstLoaded = false;
