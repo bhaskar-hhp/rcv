@@ -2115,11 +2115,20 @@ async function approveSimOrder() {
 }
 
 async function loadSimSaved(from, to) {
-  const [jioResult, tallyResult] = await Promise.all([
+  const [jioResult, sheetResult, tallyResult] = await Promise.all([
     callScript('getPendingSimOrders', { from, to }),
+    callScript('getSavedSimOrders'),
     callScript('getTallyData'),
   ]);
   const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioSimOrder) : [];
+  const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
+  const qtyMap = {};
+  for (const s of sheetOrders) {
+    if (s.orderId) qtyMap[s.orderId] = s.qty;
+  }
+  for (const o of jioOrders) {
+    if (qtyMap[o.orderId]) o.qty = qtyMap[o.orderId];
+  }
   simSavedOrders = jioOrders;
   simTallyMap = (tallyResult?.data) || {};
   renderSimSaved();
