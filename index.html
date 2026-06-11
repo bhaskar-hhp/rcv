@@ -1995,7 +1995,11 @@ function formatDateToParam(d) {
 function applySimDateFilter() {
   const from = document.getElementById('simDateFrom').value;
   const to = document.getElementById('simDateTo').value;
-  loadSimSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
+  const btn = document.querySelector('#simOrderForm ~ div button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  loadSimSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '').then(() => {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+  });
 }
 
 async function loadSimRdsData() {
