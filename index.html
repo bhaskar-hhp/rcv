@@ -1970,7 +1970,6 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function fmtDate(d) {
   if (!d) return '';
-  console.log('DEBUG fmtDate input:', JSON.stringify(d));
   const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
   if (m) {
     const day = parseInt(m[1]), mon = parseInt(m[2]);

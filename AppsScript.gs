@@ -1053,8 +1053,14 @@ function fetchSavedDeviceOrders() {
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
   for (let i = startRow; i < rows.length; i++) {
     const r = rows[i];
+    let dateStr = '';
+    if (r[0] instanceof Date) {
+      dateStr = Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy');
+    } else {
+      dateStr = String(r[0] || '');
+    }
     data.push({
-      date: String(r[0] || ''),
+      date: dateStr,
       orderId: String(r[1] || ''),
       partnerNum: String(r[2] || ''),
       partnerName: String(r[3] || ''),
