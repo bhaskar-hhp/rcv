@@ -1154,17 +1154,24 @@ function syncDeviceSheetStatus() {
 
   const jioRes = fetchMyDeviceOrdersList('2020-01-01T00:00:00', '2030-12-31T00:00:00');
   const jioStatus = {};
+  const jioOrderIds = [];
   if (jioRes.success && Array.isArray(jioRes.data)) {
     for (const o of jioRes.data) {
-      if (o.OrderNum) jioStatus[String(o.OrderNum)] = o.StatusDesc || '';
+      if (o.OrderNum) {
+        const sid = String(o.OrderNum);
+        jioOrderIds.push(sid);
+        jioStatus[sid] = o.StatusDesc || '';
+      }
     }
   }
 
   const rows = sheet.getDataRange().getValues();
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  const sheetOrderIds = [];
   let updated = 0;
   for (let i = startRow; i < rows.length; i++) {
     const orderId = String(rows[i][1] || '');
+    if (orderId) sheetOrderIds.push(orderId);
     const sheetStat = String(rows[i][9] || 'Pending');
     const liveStat = jioStatus[orderId] || '';
     if (liveStat && sheetStat !== 'Completely Dispatched' && liveStat !== sheetStat) {
@@ -1172,7 +1179,16 @@ function syncDeviceSheetStatus() {
       updated++;
     }
   }
-  return { success: true, updated: updated };
+  const matched = jioOrderIds.filter(id => sheetOrderIds.includes(id));
+  return {
+    success: true, updated: updated,
+    jioCount: jioOrderIds.length,
+    sheetCount: sheetOrderIds.length,
+    matchedCount: matched.length,
+    sampleJio: jioOrderIds.slice(0, 5),
+    sampleSheet: sheetOrderIds.slice(0, 5),
+    sampleMatched: matched.slice(0, 5),
+  };
 }
 
 function updateDeviceOrderStatus(orderId, newStatus) {

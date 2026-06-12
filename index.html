@@ -2150,7 +2150,8 @@ async function syncDeviceSheetStatus() {
   const result = await callScript('syncDeviceSheetStatus');
   if (btn) { btn.disabled = false; btn.innerHTML = 'Update Gsheet'; }
   if (result?.success) {
-    showMsg('devicePendingMsg', result.updated > 0 ? '\u2705 Synced ' + result.updated + ' orders' : 'No changes needed', 'success');
+    const diag = 'Jio: ' + result.jioCount + ' orders | Sheet: ' + result.sheetCount + ' rows | Matched: ' + result.matchedCount;
+    showMsg('devicePendingMsg', (result.updated > 0 ? '\u2705 Updated ' + result.updated + ' orders. ' : 'No changes. ') + diag, 'success');
     loadDeviceSaved();
   } else {
     showMsg('devicePendingMsg', '\u274C Sync failed: ' + (result?.error || 'Unknown error'), 'error');
