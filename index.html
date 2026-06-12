@@ -1970,10 +1970,11 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function fmtDate(d) {
   if (!d) return '';
-  if (typeof d === 'string' && /^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(d)) {
-    const p = d.split(/[-/.]/);
-    const day = parseInt(p[0]), mon = parseInt(p[1]);
-    if (mon >= 1 && mon <= 12) return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + p[2];
+  const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+  if (m) {
+    const a = parseInt(m[1]), b = parseInt(m[2]);
+    const day = a > 12 ? a : b, mon = a > 12 ? b : a;
+    return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m[3];
   }
   const dt = new Date(d);
   if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
@@ -1983,8 +1984,9 @@ function fmtDate(d) {
 function toYmd(d) {
   const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
   if (!m) return '';
-  const day = String(parseInt(m[1])).padStart(2,'0');
-  const mon = String(parseInt(m[2])).padStart(2,'0');
+  const a = parseInt(m[1]), b = parseInt(m[2]);
+  const day = String(a > 12 ? a : b).padStart(2,'0');
+  const mon = String(a > 12 ? b : a).padStart(2,'0');
   return m[3] + '-' + mon + '-' + day;
 }
 
@@ -2036,6 +2038,7 @@ function renderDevicePending() {
     html += '<tr>' +
       '<td style="font-size:.7rem;color:#64748b" title="Raw: ' + o.date.replace(/"/g,'&quot;') + '">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
+      '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem;color:#64748b">' + (o.partnerNum || '') + '</td>' +
       '<td style="font-size:.7rem;text-align:right;' + (bal != null ? (bal < 0 ? 'color:#dc2626' : 'color:#16a34a') : '') + '">' + (bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')) + '</td>' +
@@ -2244,10 +2247,11 @@ function renderSimSaved() {
       const dt = new Date(parseInt(m[1]));
       if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
     }
-    if (typeof d === 'string' && /^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(d)) {
-      const p = d.split(/[-/.]/);
-      const day = parseInt(p[0]), mon = parseInt(p[1]);
-      if (mon >= 1 && mon <= 12) return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + p[2];
+    const m2 = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+    if (m2) {
+      const a = parseInt(m2[1]), b = parseInt(m2[2]);
+      const day = a > 12 ? a : b, mon = a > 12 ? b : a;
+      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m2[3];
     }
     const dt = new Date(d);
     if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
