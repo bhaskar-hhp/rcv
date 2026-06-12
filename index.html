@@ -1860,6 +1860,7 @@ async function approveDeviceOrderSingle(btn, id) {
   const result = await callScript('approveDeviceOrder', { orderNum: row.orderId });
   if (result?.success) {
     row.status = 'Approved';
+    await callScript('updateDeviceOrderStatus', { orderId: row.orderId, status: 'Approved' });
     renderDeviceTable();
     showMsg('deviceOrderMsg', '\u2705 Order ' + row.orderId + ' approved', 'success');
   } else {
@@ -1914,6 +1915,7 @@ async function batchApproveDeviceOrders() {
     const result = await callScript('approveDeviceOrder', { orderNum: row.orderId });
     if (result?.success) {
       row.status = 'Approved';
+      await callScript('updateDeviceOrderStatus', { orderId: row.orderId, status: 'Approved' });
       count++;
     }
   }
