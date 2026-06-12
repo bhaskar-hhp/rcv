@@ -1097,13 +1097,12 @@ function fetchSavedDeviceOrders() {
 
   const jioStatus = {};
   try {
-    const jioRes = fetchMyDeviceOrdersList();
+    const jioRes = fetchMyDeviceOrdersList('2020-01-01T00:00:00', '2030-12-31T00:00:00');
     if (jioRes.success && Array.isArray(jioRes.data)) {
       for (const o of jioRes.data) {
         if (o.OrderNum) {
           const sid = String(o.OrderNum);
           jioStatus[sid] = o.StatusDesc || '';
-          updateDeviceJioStatusInSheet(sid, o.StatusDesc || '');
         }
       }
     }
@@ -1153,7 +1152,7 @@ function syncDeviceSheetStatus() {
   let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
   if (!sheet) return { success: false, error: 'Device sheet not found' };
 
-  const jioRes = fetchMyDeviceOrdersList();
+  const jioRes = fetchMyDeviceOrdersList('2020-01-01T00:00:00', '2030-12-31T00:00:00');
   const jioStatus = {};
   if (jioRes.success && Array.isArray(jioRes.data)) {
     for (const o of jioRes.data) {
