@@ -1021,6 +1021,35 @@ function fetchPendingDeviceOrders(from, to) {
   return { success: true, data: [] };
 }
 
+function fetchDeviceOrdersFromJio() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed', data: [] };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+
+  const now = new Date();
+  const fromDate = Utilities.formatDate(new Date(now.getTime() - 7 * 86400000), 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+  const toDate = Utilities.formatDate(now, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+
+  const path = "/api/dsm-orders/order-displayList-set?userType=ZD&fromDate=" + encodeURIComponent(fromDate) + "&toDate=" + encodeURIComponent(toDate) + "&soldToParty=" + custNum + "&shipToParty=";
+  const result = jioApi('GET', path, null, fullName, userId);
+
+  if (Array.isArray(result.data)) {
+    return { success: true, data: result.data };
+  }
+
+  const item = Array.isArray(result.data) ? result.data[0] : null;
+  const results = item?.body?.d?.results;
+  if (Array.isArray(results)) {
+    return { success: true, data: results };
+  }
+
+  return { success: true, data: [] };
+}
+
 function saveDeviceOrderToSheet(data) {
   const targetGid = 320908957;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1049,6 +1078,17 @@ function fetchSavedDeviceOrders() {
   if (!sheet) return { success: false, error: 'Device sheet not found' };
   const rows = sheet.getDataRange().getValues();
   if (rows.length < 2) return { success: true, data: [] };
+
+  const jioMap = {};
+  try {
+    const jioRes = fetchDeviceOrdersFromJio();
+    if (jioRes.success && Array.isArray(jioRes.data)) {
+      for (const o of jioRes.data) {
+        if (o.OrderNum) jioMap[String(o.OrderNum)] = o.StatusDesc || '';
+      }
+    }
+  } catch (e) {}
+
   const data = [];
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
   for (let i = startRow; i < rows.length; i++) {
@@ -1059,9 +1099,10 @@ function fetchSavedDeviceOrders() {
     } else {
       dateStr = String(r[0] || '');
     }
+    const orderId = String(r[1] || '');
     data.push({
       date: dateStr,
-      orderId: String(r[1] || ''),
+      orderId: orderId,
       partnerNum: String(r[2] || ''),
       partnerName: String(r[3] || ''),
       articleNum: String(r[4] || ''),
@@ -1070,6 +1111,7 @@ function fetchSavedDeviceOrders() {
       dealerPrice: String(r[7] || ''),
       totalAmount: String(r[8] || ''),
       status: String(r[9] || 'Pending'),
+      jioStatus: jioMap[orderId] || '',
     });
   }
   return { success: true, data: data };

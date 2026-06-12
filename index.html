@@ -296,7 +296,7 @@
         </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
+          <th>Date</th><th>Order ID</th><th>Partner</th><th>Partner ID</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th>Jio Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
       </div>
     </div>
@@ -2026,7 +2026,7 @@ function renderDevicePending() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -2044,6 +2044,7 @@ function renderDevicePending() {
       '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
       '<td style="text-align:center">' + o.qty + '</td>' +
       '<td><span class="badge ' + statusColor + '">' + o.status + '</span></td>' +
+      '<td style="font-size:.7rem;color:#64748b">' + (o.jioStatus || '') + '</td>' +
       '<td style="text-align:center">' +
         (o.status === 'Created'
           ? '<button class="btn-sm btn-outline" onclick="approvePendingDeviceOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
