@@ -281,6 +281,9 @@ function doPost(e) {
       case 'getSavedDeviceOrders':
         result = fetchSavedDeviceOrders();
         break;
+      case 'syncDeviceSheetStatus':
+        result = syncDeviceSheetStatus();
+        break;
       case 'updateDeviceOrderStatus':
         result = updateDeviceOrderStatus(data.orderId, data.status);
         break;
@@ -1142,6 +1145,35 @@ function fetchSavedDeviceOrders() {
   }
 
   return { success: true, data: data };
+}
+
+function syncDeviceSheetStatus() {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+
+  const jioRes = fetchMyDeviceOrdersList();
+  const jioStatus = {};
+  if (jioRes.success && Array.isArray(jioRes.data)) {
+    for (const o of jioRes.data) {
+      if (o.OrderNum) jioStatus[String(o.OrderNum)] = o.StatusDesc || '';
+    }
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  let updated = 0;
+  for (let i = startRow; i < rows.length; i++) {
+    const orderId = String(rows[i][1] || '');
+    const sheetStat = String(rows[i][9] || 'Pending');
+    const liveStat = jioStatus[orderId] || '';
+    if (liveStat && sheetStat !== 'Completely Dispatched' && liveStat !== sheetStat) {
+      sheet.getRange(i + 1, 10).setValue(liveStat);
+      updated++;
+    }
+  }
+  return { success: true, updated: updated };
 }
 
 function updateDeviceOrderStatus(orderId, newStatus) {

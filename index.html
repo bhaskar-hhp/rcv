@@ -296,6 +296,7 @@
           <input type="date" id="dvcDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <button class="btn-sm btn-outline" onclick="applyDvcDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
           <button class="btn-sm btn-outline" id="dvcBatchApproveBtn" onclick="batchApproveDevicePending()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
+          <button class="btn-sm btn-outline" onclick="syncDeviceSheetStatus()" style="color:#6366f1;border-color:#6366f1">Sync Status</button>
           <span style="font-size:.75rem;color:#64748b"><span id="dvcSelCount">0</span> selected</span>
         </div>
         <div id="devicePendingMsg" class="msg"></div>
@@ -2141,6 +2142,19 @@ function applyDvcDateFilter() {
   loadDeviceSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '').then(() => {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
   });
+}
+
+async function syncDeviceSheetStatus() {
+  const btn = document.querySelector('#deviceSavedTab button:last-of-type');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('syncDeviceSheetStatus');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Sync Status'; }
+  if (result?.success) {
+    showMsg('devicePendingMsg', result.updated > 0 ? '\u2705 Synced ' + result.updated + ' orders' : 'No changes needed', 'success');
+    loadDeviceSaved();
+  } else {
+    showMsg('devicePendingMsg', '\u274C Sync failed: ' + (result?.error || 'Unknown error'), 'error');
+  }
 }
 
 // ── SIM Order ──────────────────────────────────────────────────────
