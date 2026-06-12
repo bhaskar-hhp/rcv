@@ -1099,7 +1099,6 @@ function fetchSavedDeviceOrders() {
       for (const o of jioRes.data) {
         if (o.OrderNum) {
           const sid = String(o.OrderNum);
-          jioItems[sid] = o;
           jioStatus[sid] = o.StatusDesc || '';
           updateDeviceJioStatusInSheet(sid, o.StatusDesc || '');
         }
