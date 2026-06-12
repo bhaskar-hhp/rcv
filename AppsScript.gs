@@ -1092,7 +1092,6 @@ function fetchSavedDeviceOrders() {
   if (!sheet) return { success: false, error: 'Device sheet not found' };
   const rows = sheet.getDataRange().getValues();
 
-  const jioItems = {};
   const jioStatus = {};
   try {
     const jioRes = fetchMyDeviceOrdersList();
@@ -1120,7 +1119,13 @@ function fetchSavedDeviceOrders() {
     }
     const orderId = String(r[1] || '');
     const sheetStat = String(r[9] || 'Pending');
+    const liveStat = jioStatus[orderId] || '';
     const colK = String(r[10] || '');
+    if (liveStat && sheetStat !== 'Completely Dispatched') {
+      sheet.getRange(i + 1, 10).setValue(liveStat);
+      r[9] = liveStat;
+    }
+    const finalStat = sheetStat === 'Completely Dispatched' ? sheetStat : (liveStat || colK || sheetStat);
     data.push({
       date: dateStr,
       orderId: orderId,
@@ -1131,9 +1136,9 @@ function fetchSavedDeviceOrders() {
       qty: String(r[6] || ''),
       dealerPrice: String(r[7] || ''),
       totalAmount: String(r[8] || ''),
-      status: jioStatus[orderId] || colK || sheetStat,
-      sheetStatus: sheetStat,
-      jioStatus: jioStatus[orderId] || colK || '',
+      status: finalStat,
+      sheetStatus: liveStat ? liveStat : sheetStat,
+      jioStatus: liveStat || colK || '',
     });
   }
 
