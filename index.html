@@ -1970,10 +1970,10 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function fmtDate(d) {
   if (!d) return '';
-  const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
-  if (m) {
-    const day = parseInt(m[1]), mon = parseInt(m[2]);
-    return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m[3];
+  if (typeof d === 'string' && /^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(d)) {
+    const p = d.split(/[-/.]/);
+    const day = parseInt(p[0]), mon = parseInt(p[1]);
+    if (mon >= 1 && mon <= 12) return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + p[2];
   }
   const dt = new Date(d);
   if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
@@ -2244,10 +2244,10 @@ function renderSimSaved() {
       const dt = new Date(parseInt(m[1]));
       if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
     }
-    const m2 = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
-    if (m2) {
-      const day = parseInt(m2[1]), mon = parseInt(m2[2]);
-      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m2[3];
+    if (typeof d === 'string' && /^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(d)) {
+      const p = d.split(/[-/.]/);
+      const day = parseInt(p[0]), mon = parseInt(p[1]);
+      if (mon >= 1 && mon <= 12) return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + p[2];
     }
     const dt = new Date(d);
     if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
