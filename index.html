@@ -289,10 +289,6 @@
       </div>
       <!-- Open/All sub-tab (SIM-like) -->
       <div id="deviceSavedTab" style="display:none;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:4px;margin:10px 0" id="deviceOpenSubTabs">
-          <button class="gst-tab active" data-dvcfilter="open">Open</button>
-          <button class="gst-tab" data-dvcfilter="all">All</button>
-        </div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
           <label style="font-size:.7rem;color:#64748b">From:</label>
           <input type="date" id="dvcDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
@@ -1375,16 +1371,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
-    document.querySelectorAll('#deviceOpenSubTabs .gst-tab').forEach(t => {
-      t.addEventListener('click', () => {
-        document.querySelectorAll('#deviceOpenSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
-        renderDeviceSaved();
-        const sa = document.querySelector('#deviceSavedBody').closest('div').previousElementSibling.querySelector('thead input[type=checkbox]');
-        if (sa) sa.checked = false;
-        document.getElementById('dvcSelCount').textContent = '0';
-      });
-    });
     document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
       t.addEventListener('click', () => {
         document.querySelectorAll('#simSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
@@ -2049,10 +2035,10 @@ function mapJioDeviceOrder(r) {
 
 function renderDeviceSaved() {
   const tbody = document.getElementById('deviceSavedBody');
-  const activeFilter = document.querySelector('#deviceOpenSubTabs .gst-tab.active')?.dataset?.dvcfilter || 'open';
+  const activeTab = document.querySelector('#deviceSubTabs .gst-tab.active')?.dataset?.dtab || 'open';
 
   let filtered = deviceSavedOrders;
-  if (activeFilter === 'open') {
+  if (activeTab === 'open') {
     filtered = filtered.filter(o => o.statusDesc === 'Pending For Approval');
   }
 
