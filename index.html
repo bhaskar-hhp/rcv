@@ -1972,8 +1972,7 @@ function fmtDate(d) {
   if (!d) return '';
   const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
   if (m) {
-    const a = parseInt(m[1]), b = parseInt(m[2]);
-    const day = a > 12 ? a : b, mon = a > 12 ? b : a;
+    const day = parseInt(m[1]), mon = parseInt(m[2]);
     return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m[3];
   }
   const dt = new Date(d);
@@ -1984,9 +1983,8 @@ function fmtDate(d) {
 function toYmd(d) {
   const m = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
   if (!m) return '';
-  const a = parseInt(m[1]), b = parseInt(m[2]);
-  const day = String(a > 12 ? a : b).padStart(2,'0');
-  const mon = String(a > 12 ? b : a).padStart(2,'0');
+  const day = String(parseInt(m[1])).padStart(2,'0');
+  const mon = String(parseInt(m[2])).padStart(2,'0');
   return m[3] + '-' + mon + '-' + day;
 }
 
@@ -2249,8 +2247,7 @@ function renderSimSaved() {
     }
     const m2 = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
     if (m2) {
-      const a = parseInt(m2[1]), b = parseInt(m2[2]);
-      const day = a > 12 ? a : b, mon = a > 12 ? b : a;
+      const day = parseInt(m2[1]), mon = parseInt(m2[2]);
       return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m2[3];
     }
     const dt = new Date(d);
