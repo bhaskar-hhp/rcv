@@ -1037,9 +1037,14 @@ function fetchMyDeviceOrdersList(from, to) {
   const path = "/api/dsm-orders/MyOrder-List-set?UserInd=ZD&CustomerNum=" + custNum + "&DateFrom=" + encodeURIComponent(fromDate) + "&DateTo=" + encodeURIComponent(toDate) + "&StatusTyp=L&RRLInd=";
   const result = jioApi('GET', path, null, fullName, userId);
 
-  const orders = Array.isArray(result.data) ? result.data : [];
-  const deviceOrders = orders.filter(r => r.OrdTypDesc === 'JIO Bharat');
-  return { success: true, data: deviceOrders };
+  let orders = Array.isArray(result.data) ? result.data : [];
+  if (!orders.length && result.data && typeof result.data === 'object') {
+    const item = Array.isArray(result.data) ? result.data[0] : result.data;
+    const results = item?.body?.d?.results;
+    if (Array.isArray(results)) orders = results;
+  }
+
+  return { success: true, data: orders };
 }
 
 function saveDeviceOrderToSheet(data) {
@@ -1104,7 +1109,6 @@ function fetchSavedDeviceOrders() {
 
   const data = [];
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
-  const seenIds = {};
   for (let i = startRow; i < rows.length; i++) {
     const r = rows[i];
     let dateStr = '';
@@ -1115,7 +1119,7 @@ function fetchSavedDeviceOrders() {
     }
     const orderId = String(r[1] || '');
     const sheetStat = String(r[9] || 'Pending');
-    seenIds[orderId] = true;
+    const colK = String(r[10] || '');
     data.push({
       date: dateStr,
       orderId: orderId,
@@ -1126,28 +1130,9 @@ function fetchSavedDeviceOrders() {
       qty: String(r[6] || ''),
       dealerPrice: String(r[7] || ''),
       totalAmount: String(r[8] || ''),
-      status: jioStatus[orderId] || sheetStat,
+      status: jioStatus[orderId] || colK || sheetStat,
       sheetStatus: sheetStat,
-      jioStatus: jioStatus[orderId] || '',
-    });
-  }
-
-  for (const o of Object.values(jioItems)) {
-    const oid = String(o.OrderNum);
-    if (seenIds[oid]) continue;
-    data.push({
-      date: '',
-      orderId: oid,
-      partnerNum: '',
-      partnerName: o.CustName || o.CustomerName || '',
-      articleNum: o.ArticleNum || '',
-      productName: o.ArticleDesc || '',
-      qty: String(o.OrdQty || o.Qty || ''),
-      dealerPrice: '',
-      totalAmount: '',
-      status: o.StatusDesc || '',
-      sheetStatus: '',
-      jioStatus: o.StatusDesc || '',
+      jioStatus: jioStatus[orderId] || colK || '',
     });
   }
 
