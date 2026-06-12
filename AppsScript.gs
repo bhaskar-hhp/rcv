@@ -1021,7 +1021,7 @@ function fetchPendingDeviceOrders(from, to) {
   return { success: true, data: [] };
 }
 
-function fetchDeviceOrdersFromJio() {
+function fetchMyDeviceOrdersList(from, to) {
   const userInfo = getUserInfo();
   if (!userInfo) return { success: false, error: 'Auth failed', data: [] };
   const props = getProps();
@@ -1031,23 +1031,15 @@ function fetchDeviceOrdersFromJio() {
   const custNum = userInfo.CustomerNum || '660002825';
 
   const now = new Date();
-  const fromDate = Utilities.formatDate(new Date(now.getTime() - 7 * 86400000), 'IST', "yyyy-MM-dd'T'HH:mm:ss");
-  const toDate = Utilities.formatDate(now, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+  const fromDate = from || Utilities.formatDate(new Date(now.getTime() - 30 * 86400000), 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+  const toDate = to || Utilities.formatDate(now, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
 
-  const path = "/api/dsm-orders/order-displayList-set?userType=ZD&fromDate=" + encodeURIComponent(fromDate) + "&toDate=" + encodeURIComponent(toDate) + "&soldToParty=" + custNum + "&shipToParty=";
+  const path = "/api/dsm-orders/MyOrder-List-set?UserInd=ZD&CustomerNum=" + custNum + "&DateFrom=" + encodeURIComponent(fromDate) + "&DateTo=" + encodeURIComponent(toDate) + "&StatusTyp=L&RRLInd=";
   const result = jioApi('GET', path, null, fullName, userId);
 
-  if (Array.isArray(result.data)) {
-    return { success: true, data: result.data };
-  }
-
-  const item = Array.isArray(result.data) ? result.data[0] : null;
-  const results = item?.body?.d?.results;
-  if (Array.isArray(results)) {
-    return { success: true, data: results };
-  }
-
-  return { success: true, data: [] };
+  const orders = Array.isArray(result.data) ? result.data : [];
+  const deviceOrders = orders.filter(r => r.OrdTypDesc === 'JIO Bharat');
+  return { success: true, data: deviceOrders };
 }
 
 function saveDeviceOrderToSheet(data) {
@@ -1067,8 +1059,24 @@ function saveDeviceOrderToSheet(data) {
     data.dealerPrice || '',
     data.totalAmount || '',
     data.status || 'Pending',
+    '',
   ]);
   return { success: true };
+}
+
+function updateDeviceJioStatusInSheet(orderId, jioStatus) {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return;
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  for (let i = startRow; i < rows.length; i++) {
+    if (String(rows[i][1] || '') === String(orderId)) {
+      sheet.getRange(i + 1, 11).setValue(jioStatus || '');
+      return;
+    }
+  }
 }
 
 function fetchSavedDeviceOrders() {
@@ -1077,20 +1085,26 @@ function fetchSavedDeviceOrders() {
   let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
   if (!sheet) return { success: false, error: 'Device sheet not found' };
   const rows = sheet.getDataRange().getValues();
-  if (rows.length < 2) return { success: true, data: [] };
 
-  const jioMap = {};
+  const jioItems = {};
+  const jioStatus = {};
   try {
-    const jioRes = fetchDeviceOrdersFromJio();
+    const jioRes = fetchMyDeviceOrdersList();
     if (jioRes.success && Array.isArray(jioRes.data)) {
       for (const o of jioRes.data) {
-        if (o.OrderNum) jioMap[String(o.OrderNum)] = o.StatusDesc || '';
+        if (o.OrderNum) {
+          const sid = String(o.OrderNum);
+          jioItems[sid] = o;
+          jioStatus[sid] = o.StatusDesc || '';
+          updateDeviceJioStatusInSheet(sid, o.StatusDesc || '');
+        }
       }
     }
   } catch (e) {}
 
   const data = [];
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  const seenIds = {};
   for (let i = startRow; i < rows.length; i++) {
     const r = rows[i];
     let dateStr = '';
@@ -1100,6 +1114,8 @@ function fetchSavedDeviceOrders() {
       dateStr = String(r[0] || '');
     }
     const orderId = String(r[1] || '');
+    const sheetStat = String(r[9] || 'Pending');
+    seenIds[orderId] = true;
     data.push({
       date: dateStr,
       orderId: orderId,
@@ -1110,10 +1126,31 @@ function fetchSavedDeviceOrders() {
       qty: String(r[6] || ''),
       dealerPrice: String(r[7] || ''),
       totalAmount: String(r[8] || ''),
-      status: String(r[9] || 'Pending'),
-      jioStatus: jioMap[orderId] || '',
+      status: jioStatus[orderId] || sheetStat,
+      sheetStatus: sheetStat,
+      jioStatus: jioStatus[orderId] || '',
     });
   }
+
+  for (const o of Object.values(jioItems)) {
+    const oid = String(o.OrderNum);
+    if (seenIds[oid]) continue;
+    data.push({
+      date: '',
+      orderId: oid,
+      partnerNum: '',
+      partnerName: o.CustName || o.CustomerName || '',
+      articleNum: o.ArticleNum || '',
+      productName: o.ArticleDesc || '',
+      qty: String(o.OrdQty || o.Qty || ''),
+      dealerPrice: '',
+      totalAmount: '',
+      status: o.StatusDesc || '',
+      sheetStatus: '',
+      jioStatus: o.StatusDesc || '',
+    });
+  }
+
   return { success: true, data: data };
 }
 
