@@ -904,13 +904,15 @@ async function renderPartnerBalance(wrap) {
     return;
   }
   const rows = result.data || [];
-  let html = '<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn-primary" onclick="addRdsRow()">+ Add Row</button></div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th>Patnar</th><th>ID</th><th>Balance</th><th style="width:60px">Action</th></tr></thead><tbody>';
+  let html = '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center"><button class="btn-primary" onclick="addRdsRow()">+ Add Row</button>';
+  html += '<button class="btn-sm btn-outline" onclick="batchPushSubmitPartner()" style="color:#dc2626;border-color:#dc2626">Push &amp; Submit Selected</button>';
+  html += '<span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="partnerSelCount">0</span> selected</span></div>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th style="width:32px"><input type="checkbox" onchange="toggleAllPartner(this.checked)"></th><th>Patnar</th><th>ID</th><th>Balance</th><th style="width:60px">Action</th></tr></thead><tbody>';
   if (!rows.length) {
-    html += '<tr><td colspan="4" style="text-align:center;color:#999">No rows</td></tr>';
+    html += '<tr><td colspan="5" style="text-align:center;color:#999">No rows</td></tr>';
   } else {
     for (const r of rows) {
-      html += `<tr><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td><td><button class="btn-sm btn-outline" onclick="deleteRdsRow(${r.rowIndex})" style="color:#dc2626;border-color:#dc2626">Delete</button></td></tr>`;
+      html += `<tr><td style="text-align:center"><input type="checkbox" class="partner-cb" data-rowidx="${r.rowIndex}" data-name="${r.a.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" data-num="${r.b}" data-bal="${r.c}" onchange="updatePartnerSelCount()"></td><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td><td><button class="btn-sm btn-outline" onclick="deleteRdsRow(${r.rowIndex})" style="color:#dc2626;border-color:#dc2626">Delete</button></td></tr>`;
     }
   }
   html += '</tbody></table></div>';
@@ -928,6 +930,37 @@ async function deleteRdsRow(rowIndex) {
   await callScript('deleteRdsRow', { rowIndex });
   const wrap = document.getElementById('gstWrap');
   renderPartnerBalance(wrap);
+}
+
+function toggleAllPartner(checked) {
+  document.querySelectorAll('.partner-cb').forEach(cb => cb.checked = checked);
+  updatePartnerSelCount();
+}
+
+function updatePartnerSelCount() {
+  document.getElementById('partnerSelCount').textContent = document.querySelectorAll('.partner-cb:checked').length;
+}
+
+async function batchPushSubmitPartner() {
+  const cbs = document.querySelectorAll('.partner-cb:checked');
+  if (!cbs.length) return;
+  if (!confirm('Push & Submit ' + cbs.length + ' partner(s)?')) return;
+  const btn = document.querySelector('[onclick="batchPushSubmitPartner()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...'; }
+  let ok = 0;
+  for (const cb of cbs) {
+    const name = cb.dataset.name;
+    const num = cb.dataset.num;
+    const bal = cb.dataset.bal || '0';
+    if (!num) continue;
+    const pushResult = await callScript('saveOrder', { customerNum: num, amount: bal });
+    const orderId = pushResult?.orderId || '';
+    const balNum = parseFloat(String(bal).replace(/,/g, '')) || 0;
+    await callScript('addCreditRow', { partner: name, customerNum: num, basic: String(balNum), amount: String(balNum), isAddFund: false, orderId, remark: '' });
+    if (pushResult?.success) ok++;
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Push & Submit Selected'; }
+  loadGstCalc(document.querySelector('.gst-tab.active')?.dataset?.filter || 'partner_balance');
 }
 
 function lookupTallyBalance(partnerName, tallyMap) {
