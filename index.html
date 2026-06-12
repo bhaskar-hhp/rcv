@@ -2024,7 +2024,7 @@ function renderDevicePending() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -2036,7 +2036,6 @@ function renderDevicePending() {
     html += '<tr>' +
       '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
-      '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem;color:#64748b">' + (o.partnerNum || '') + '</td>' +
       '<td style="font-size:.7rem;text-align:right;' + (bal != null ? (bal < 0 ? 'color:#dc2626' : 'color:#16a34a') : '') + '">' + (bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')) + '</td>' +
