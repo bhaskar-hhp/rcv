@@ -2034,7 +2034,7 @@ function renderDevicePending() {
     const balRaw = lookupTallyBalance(o.partnerName, deviceTallyMap);
     const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
     html += '<tr>' +
-      '<td style="font-size:.7rem;color:#64748b" title="Raw: ' + o.date.replace(/"/g,'&quot;') + '">' + fmtDate(o.date) + '</td>' +
+      '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
       '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +

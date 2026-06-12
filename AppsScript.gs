@@ -537,7 +537,7 @@ function getGstCalcData() {
       const customer = matchCustomer(partner, masterMap) || String(r[3] || '');
       result.push({
         rowIndex: i + 1,
-        date: r[0] instanceof Date ? Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy') : String(r[0] || ''),
+        date: r[0] && typeof r[0] === 'object' && typeof r[0].getMonth === 'function' ? Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy') : String(r[0] || ''),
         orderId: String(r[1] || '').replace(/[^\d]/g, ''),
         partner: partner,
         customerNum: customer,
@@ -786,7 +786,7 @@ function getRecoDataFromSheet() {
     const r = rows[i];
     const rawDate = r[0];
     let date = '';
-    if (rawDate instanceof Date) {
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
       date = Utilities.formatDate(rawDate, 'IST', 'dd-MM-yyyy');
     } else {
       const s = String(rawDate || '').trim();
@@ -1054,7 +1054,7 @@ function fetchSavedDeviceOrders() {
   for (let i = startRow; i < rows.length; i++) {
     const r = rows[i];
     let dateStr = '';
-    if (r[0] instanceof Date) {
+    if (r[0] && typeof r[0] === 'object' && typeof r[0].getMonth === 'function') {
       dateStr = Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy');
     } else {
       dateStr = String(r[0] || '');
