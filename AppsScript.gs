@@ -273,7 +273,7 @@ function doPost(e) {
         result = approveDeviceOrderApi(data.orderNum);
         break;
       case 'getPendingDeviceOrders':
-        result = fetchPendingDeviceOrders(data.from, data.to);
+        result = fetchMyDeviceOrdersList(data.from, data.to);
         break;
       case 'saveDeviceOrder':
         result = saveDeviceOrderToSheet(data);
@@ -1044,7 +1044,8 @@ function fetchMyDeviceOrdersList(from, to) {
     if (Array.isArray(results)) orders = results;
   }
 
-  return { success: true, data: orders };
+  const deviceOrders = orders.filter(r => r.OrdTypDesc === 'JIO Bharat' || r.OrderType === 'ZBHA');
+  return { success: true, data: deviceOrders };
 }
 
 function saveDeviceOrderToSheet(data) {

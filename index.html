@@ -261,7 +261,7 @@
       <h2>Device Orders</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="deviceSubTabs">
         <button class="gst-tab active" data-dtab="create">Create</button>
-        <button class="gst-tab" data-dtab="pending">Pending</button>
+        <button class="gst-tab" data-dtab="open">Open</button>
         <button class="gst-tab" data-dtab="all">All</button>
       </div>
       <!-- Create sub-tab -->
@@ -287,17 +287,26 @@
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
         <div id="deviceBalanceResults" style="margin-top:8px"></div>
       </div>
-      <!-- Pending sub-tab -->
-      <div id="devicePendingTab" style="display:none;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <button class="btn-primary btn-sm" onclick="loadDevicePending()">↻ Refresh</button>
-          <label style="font-size:.7rem;color:#64748b">From: <input type="date" id="dpFromDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
-          <label style="font-size:.7rem;color:#64748b">To: <input type="date" id="dpToDate" onchange="renderDevicePending()" style="width:140px;font-size:.7rem;padding:4px 6px"></label>
+      <!-- Open/All sub-tab (SIM-like) -->
+      <div id="deviceSavedTab" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:4px;margin:10px 0" id="deviceOpenSubTabs">
+          <button class="gst-tab active" data-dvcfilter="open">Open</button>
+          <button class="gst-tab" data-dvcfilter="all">All</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <label style="font-size:.7rem;color:#64748b">From:</label>
+          <input type="date" id="dvcDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <label style="font-size:.7rem;color:#64748b">To:</label>
+          <input type="date" id="dvcDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <button class="btn-sm btn-outline" onclick="applyDvcDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
+          <button class="btn-sm btn-outline" id="dvcBatchApproveBtn" onclick="batchApproveDevicePending()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
+          <span style="font-size:.75rem;color:#64748b"><span id="dvcSelCount">0</span> selected</span>
         </div>
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner</th><th>Customer #</th><th>Product</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
-        </tr></thead><tbody id="devicePendingBody"></tbody></table></div>
+          <th style="width:32px"><input type="checkbox" onchange="toggleAllDevicePending(this.checked)"></th>
+          <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
+        </tr></thead><tbody id="deviceSavedBody"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -1358,8 +1367,22 @@ document.addEventListener('DOMContentLoaded', () => {
         t.classList.add('active');
         const tab = t.dataset.dtab;
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
-        document.getElementById('devicePendingTab').style.display = (tab === 'pending' || tab === 'all') ? 'flex' : 'none';
-        if (tab === 'pending' || tab === 'all') loadDevicePending();
+        document.getElementById('deviceSavedTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
+        if (tab === 'open' || tab === 'all') {
+          const from = document.getElementById('dvcDateFrom').value;
+          const to = document.getElementById('dvcDateTo').value;
+          loadDeviceSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
+        }
+      });
+    });
+    document.querySelectorAll('#deviceOpenSubTabs .gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('#deviceOpenSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        renderDeviceSaved();
+        const sa = document.querySelector('#deviceSavedBody').closest('div').previousElementSibling.querySelector('thead input[type=checkbox]');
+        if (sa) sa.checked = false;
+        document.getElementById('dvcSelCount').textContent = '0';
       });
     });
     document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
@@ -1639,9 +1662,12 @@ async function initDeviceTab() {
   deviceProductOptionsHtml = '<option value="">— Select Product —</option>';
   document.getElementById('deviceOrderMsg').className = 'msg';
   document.getElementById('deviceCreateTab').style.display = 'flex';
-  document.getElementById('devicePendingTab').style.display = 'none';
+  document.getElementById('deviceSavedTab').style.display = 'none';
   document.querySelectorAll('#deviceSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#deviceSubTabs .gst-tab[data-dtab="create"]').classList.add('active');
+  const dt = new Date();
+  document.getElementById('dvcDateTo').value = dt.toISOString().slice(0,10);
+  document.getElementById('dvcDateFrom').value = dt.toISOString().slice(0,10);
   try {
     await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally()]);
   } catch (e) {
@@ -1965,8 +1991,8 @@ async function batchCreateAndApproveDeviceOrders() {
   deviceSelRows.clear();
 }
 
-let devicePendingOrders = [];
 let deviceTallyMap = {};
+let deviceSavedOrders = [];
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -1990,39 +2016,44 @@ function toYmd(d) {
   return m[3] + '-' + mon + '-' + day;
 }
 
-async function loadDevicePending() {
-  const btn = document.querySelector('#devicePendingTab .btn-primary');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  const [orderResult, tallyResult] = await Promise.all([
+async function loadDeviceSaved(from, to) {
+  const [jioResult, sheetResult, tallyResult] = await Promise.all([
+    callScript('getPendingDeviceOrders', { from, to }),
     callScript('getSavedDeviceOrders'),
-    callScript('getTallyData')
+    callScript('getTallyData'),
   ]);
-  if (btn) { btn.disabled = false; btn.innerHTML = '\u21BB Refresh'; }
-  devicePendingOrders = Array.isArray(orderResult?.data) ? orderResult.data : [];
+  const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioDeviceOrder) : [];
+  const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
+  const qtyMap = {};
+  for (const s of sheetOrders) {
+    if (s.orderId) qtyMap[s.orderId] = s.qty;
+  }
+  for (const o of jioOrders) {
+    if (qtyMap[o.orderId]) o.qty = qtyMap[o.orderId];
+  }
+  deviceSavedOrders = jioOrders;
   deviceTallyMap = (tallyResult?.data) || {};
-  renderDevicePending();
+  renderDeviceSaved();
 }
 
-function renderDevicePending() {
-  const fromVal = document.getElementById('dpFromDate').value;
-  const toVal = document.getElementById('dpToDate').value;
-  const tbody = document.getElementById('devicePendingBody');
+function mapJioDeviceOrder(r) {
+  return {
+    date: r.CreationDate || '',
+    orderId: r.OrderNum || '',
+    customerNum: r.CustomerNum || '',
+    customerName: r.CustName || '',
+    qty: '',
+    statusDesc: r.StatusDesc || '',
+  };
+}
 
-  let filtered = devicePendingOrders;
+function renderDeviceSaved() {
+  const tbody = document.getElementById('deviceSavedBody');
+  const activeFilter = document.querySelector('#deviceOpenSubTabs .gst-tab.active')?.dataset?.dvcfilter || 'open';
 
-  const activeTab = document.querySelector('#deviceSubTabs .gst-tab.active')?.dataset?.dtab;
-  if (activeTab === 'pending') {
-    filtered = filtered.filter(o => o.sheetStatus === 'Created');
-  }
-
-  if (fromVal || toVal) {
-    filtered = filtered.filter(o => {
-      const ym = toYmd(o.date);
-      if (!ym) return true;
-      if (fromVal && ym < fromVal) return false;
-      if (toVal && ym > toVal) return false;
-      return true;
-    });
+  let filtered = deviceSavedOrders;
+  if (activeFilter === 'open') {
+    filtered = filtered.filter(o => o.statusDesc === 'Pending For Approval');
   }
 
   if (!filtered.length) {
@@ -2030,28 +2061,78 @@ function renderDevicePending() {
     return;
   }
 
+  function fmtDate(d) {
+    if (!d) return '';
+    const m = d.match(/\/Date\((\d+)\)\//);
+    if (m) {
+      const dt = new Date(parseInt(m[1]));
+      if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
+    }
+    const m2 = d.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+    if (m2) {
+      const day = parseInt(m2[1]), mon = parseInt(m2[2]);
+      return String(day).padStart(2,'0') + '-' + MONTHS[mon-1] + '-' + m2[3];
+    }
+    const dt = new Date(d);
+    if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
+    return d;
+  }
+
   let html = '';
   for (const o of filtered) {
-    const s = (o.status || '').toLowerCase();
-    const statusColor = s === 'approved' || s === 'released' ? 'badge-success' : s === 'rejected' ? 'badge-error' : 'badge-pending';
+    const isPending = o.statusDesc === 'Pending For Approval';
+    const statusColor = isPending ? 'badge-pending' : 'badge-success';
+    const statusLabel = isPending ? 'Pending' : o.statusDesc || 'Completed';
     html += '<tr>' +
+      '<td style="text-align:center"><input type="checkbox" class="dvc-cb" data-orderid="' + o.orderId + '" onchange="updateDevicePendingSelCount()" ' + (isPending ? '' : 'disabled') + '></td>' +
       '<td style="font-size:.7rem;color:#64748b">' + fmtDate(o.date) + '</td>' +
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
-      '<td style="font-size:.7rem">' + (o.partnerName || '') + '</td>' +
-      '<td style="font-size:.7rem;color:#64748b">' + (o.partnerNum || '') + '</td>' +
-      '<td style="font-size:.7rem">' + (o.productName || '') + '</td>' +
-      '<td style="text-align:center">' + o.qty + '</td>' +
-      '<td><span class="badge ' + statusColor + '">' + (o.status || '') + '</span></td>' +
+      '<td style="font-size:.7rem">' + (o.customerNum || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.customerName || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.qty || '') + '</td>' +
+      '<td><span class="badge ' + statusColor + '">' + statusLabel + '</span></td>' +
       '<td style="text-align:center">' +
-        (o.sheetStatus === 'Created'
-          ? '<button class="btn-sm btn-outline" onclick="approvePendingDeviceOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
+        (isPending
+          ? '<button class="btn-sm btn-outline" onclick="approveDeviceSavedOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
           : '') +
       '</td></tr>';
   }
   tbody.innerHTML = html;
 }
 
-async function approvePendingDeviceOrder(orderNum, btn) {
+function toggleAllDevicePending(checked) {
+  document.querySelectorAll('.dvc-cb:not(:disabled)').forEach(cb => cb.checked = checked);
+  updateDevicePendingSelCount();
+}
+
+function updateDevicePendingSelCount() {
+  const count = document.querySelectorAll('.dvc-cb:checked').length;
+  document.getElementById('dvcSelCount').textContent = count;
+}
+
+async function batchApproveDevicePending() {
+  const cbs = document.querySelectorAll('.dvc-cb:checked');
+  if (!cbs.length) { showMsg('devicePendingMsg', 'Select orders to approve.', 'error'); return; }
+  if (!confirm('Approve ' + cbs.length + ' selected orders?')) return;
+  const btn = document.getElementById('dvcBatchApproveBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let ok = 0, fail = 0;
+  for (const cb of cbs) {
+    const orderId = cb.dataset.orderid;
+    const result = await callScript('approveDeviceOrder', { orderNum: orderId });
+    if (result?.success) {
+      await callScript('updateDeviceOrderStatus', { orderId, status: 'Approved' });
+      ok++;
+    } else {
+      fail++;
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Approve Selected'; }
+  showMsg('devicePendingMsg', '\u2705 Approved ' + ok + '/' + cbs.length + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
+  loadDeviceSaved();
+}
+
+async function approveDeviceSavedOrder(orderNum, btn) {
   if (!confirm('Approve order ' + orderNum + '?')) return;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const result = await callScript('approveDeviceOrder', { orderNum });
@@ -2059,11 +2140,21 @@ async function approvePendingDeviceOrder(orderNum, btn) {
     await callScript('updateDeviceOrderStatus', { orderId: orderNum, status: 'Approved' });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u2705 Approved ' + orderNum, 'success');
-    loadDevicePending();
+    loadDeviceSaved();
   } else {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
   }
+}
+
+function applyDvcDateFilter() {
+  const from = document.getElementById('dvcDateFrom').value;
+  const to = document.getElementById('dvcDateTo').value;
+  const btn = document.querySelector('#dvcDateFrom ~ button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  loadDeviceSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '').then(() => {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+  });
 }
 
 // ── SIM Order ──────────────────────────────────────────────────────
