@@ -2147,10 +2147,10 @@ function applyDvcDateFilter() {
 async function syncDeviceSheetStatus() {
   const btn = document.querySelector('#deviceSavedTab button:last-of-type');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  const result = await callScript('syncDeviceSheetStatus');
+  const result = await callScript('syncDeviceSheetStatus', { orders: deviceSavedOrders });
   if (btn) { btn.disabled = false; btn.innerHTML = 'Update Gsheet'; }
   if (result?.success) {
-    const diag = 'Jio: ' + result.jioCount + ' orders | Sheet: ' + result.sheetCount + ' rows | Matched: ' + result.matchedCount;
+    const diag = 'Orders from table: ' + result.totalOrders + ' | Sheet rows: ' + result.sheetCount + ' | Matched: ' + result.matchedCount;
     showMsg('devicePendingMsg', (result.updated > 0 ? '\u2705 Updated ' + result.updated + ' orders. ' : 'No changes. ') + diag, 'success');
     loadDeviceSaved();
   } else {

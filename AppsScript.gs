@@ -282,7 +282,7 @@ function doPost(e) {
         result = fetchSavedDeviceOrders();
         break;
       case 'syncDeviceSheetStatus':
-        result = syncDeviceSheetStatus();
+        result = syncDeviceSheetStatus(data);
         break;
       case 'updateDeviceOrderStatus':
         result = updateDeviceOrderStatus(data.orderId, data.status);
@@ -1146,23 +1146,16 @@ function fetchSavedDeviceOrders() {
   return { success: true, data: data };
 }
 
-function syncDeviceSheetStatus() {
+function syncDeviceSheetStatus(data) {
   const targetGid = 320908957;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
   if (!sheet) return { success: false, error: 'Device sheet not found' };
 
-  const jioRes = fetchMyDeviceOrdersList('2020-01-01T00:00:00', '2030-12-31T00:00:00');
-  const jioStatus = {};
-  const jioOrderIds = [];
-  if (jioRes.success && Array.isArray(jioRes.data)) {
-    for (const o of jioRes.data) {
-      if (o.OrderNum) {
-        const sid = String(o.OrderNum);
-        jioOrderIds.push(sid);
-        jioStatus[sid] = o.StatusDesc || '';
-      }
-    }
+  const tableOrders = (data?.orders || []).filter(o => o.orderId);
+  const tableMap = {};
+  for (const o of tableOrders) {
+    tableMap[o.orderId] = o.statusDesc || '';
   }
 
   const rows = sheet.getDataRange().getValues();
@@ -1173,21 +1166,18 @@ function syncDeviceSheetStatus() {
     const orderId = String(rows[i][1] || '');
     if (orderId) sheetOrderIds.push(orderId);
     const sheetStat = String(rows[i][9] || 'Pending');
-    const liveStat = jioStatus[orderId] || '';
+    const liveStat = tableMap[orderId] || '';
     if (liveStat && sheetStat !== 'Completely Dispatched' && liveStat !== sheetStat) {
       sheet.getRange(i + 1, 10).setValue(liveStat);
       updated++;
     }
   }
-  const matched = jioOrderIds.filter(id => sheetOrderIds.includes(id));
+  const matched = tableOrders.filter(o => sheetOrderIds.includes(o.orderId));
   return {
     success: true, updated: updated,
-    jioCount: jioOrderIds.length,
+    totalOrders: tableOrders.length,
     sheetCount: sheetOrderIds.length,
     matchedCount: matched.length,
-    sampleJio: jioOrderIds.slice(0, 5),
-    sampleSheet: sheetOrderIds.slice(0, 5),
-    sampleMatched: matched.slice(0, 5),
   };
 }
 
