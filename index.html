@@ -956,7 +956,9 @@ async function batchPushSubmitPartner() {
     const pushResult = await callScript('saveOrder', { customerNum: num, amount: bal });
     const orderId = pushResult?.orderId || '';
     const balNum = parseFloat(String(bal).replace(/,/g, '')) || 0;
-    await callScript('addCreditRow', { partner: name, customerNum: num, basic: String(balNum), amount: String(balNum), isAddFund: false, orderId, remark: '' });
+    const basicVal = balNum;
+    const amountVal = (basicVal * getMult(false)).toFixed(2);
+    await callScript('addCreditRow', { partner: name, customerNum: num, basic: String(basicVal), amount: String(amountVal), isAddFund: false, orderId, remark: '' });
     if (pushResult?.success) ok++;
   }
   if (btn) { btn.disabled = false; btn.innerHTML = 'Push & Submit Selected'; }
