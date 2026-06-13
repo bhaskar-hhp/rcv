@@ -302,7 +302,7 @@
         <div id="devicePendingMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevicePending(this.checked)"></th>
-          <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
+          <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Model</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="deviceSavedBody"></tbody></table></div>
       </div>
     </div>
@@ -2012,11 +2012,16 @@ async function loadDeviceSaved(from, to) {
   const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioDeviceOrder) : [];
   const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
   const qtyMap = {};
+  const modelMap = {};
   for (const s of sheetOrders) {
-    if (s.orderId) qtyMap[s.orderId] = s.qty;
+    if (s.orderId) {
+      qtyMap[s.orderId] = s.qty;
+      modelMap[s.orderId] = s.productName || '';
+    }
   }
   for (const o of jioOrders) {
     if (qtyMap[o.orderId]) o.qty = qtyMap[o.orderId];
+    if (modelMap[o.orderId]) o.model = modelMap[o.orderId];
   }
   deviceSavedOrders = jioOrders;
   deviceTallyMap = (tallyResult?.data) || {};
@@ -2044,7 +2049,7 @@ function renderDeviceSaved() {
   }
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No orders found.</td></tr>';
     return;
   }
 
@@ -2076,6 +2081,7 @@ function renderDeviceSaved() {
       '<td><input type="text" value="' + o.orderId + '" readonly style="width:90px;font-size:.7rem;padding:4px 6px;background:#f1f5f9;border:none;border-radius:4px"></td>' +
       '<td style="font-size:.7rem">' + (o.customerNum || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.customerName || '') + '</td>' +
+      '<td style="font-size:.7rem">' + (o.model || '') + '</td>' +
       '<td style="font-size:.7rem">' + (o.qty || '') + '</td>' +
       '<td><span class="badge ' + statusColor + '">' + statusLabel + '</span></td>' +
       '<td style="text-align:center">' +
