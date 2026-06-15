@@ -281,6 +281,9 @@ function doPost(e) {
       case 'getSavedDeviceOrders':
         result = fetchSavedDeviceOrders();
         break;
+      case 'fetchDeviceSheetData':
+        result = fetchDeviceSheetData(data);
+        break;
       case 'syncDeviceSheetStatus':
         result = syncDeviceSheetStatus(data);
         break;
@@ -1144,6 +1147,59 @@ function fetchSavedDeviceOrders() {
   }
 
   return { success: true, data: data };
+}
+
+function fetchDeviceSheetData(data) {
+  const targetGid = 320908957;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+
+  const filterDateFrom = data?.dateFrom || '';
+  const filterDateTo = data?.dateTo || '';
+  const filterPartner = (data?.partner || '').toLowerCase();
+
+  const result = [];
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    let dateStr = '';
+    if (r[0] && typeof r[0] === 'object' && typeof r[0].getMonth === 'function') {
+      dateStr = Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy');
+    } else {
+      dateStr = String(r[0] || '');
+    }
+
+    if (filterDateFrom) {
+      const sd = new Date(dateStr.split('-').reverse().join('-') + 'T00:00:00');
+      const fd = new Date(filterDateFrom + 'T00:00:00');
+      if (!isNaN(sd.getTime()) && sd < fd) continue;
+    }
+    if (filterDateTo) {
+      const sd = new Date(dateStr.split('-').reverse().join('-') + 'T00:00:00');
+      const td = new Date(filterDateTo + 'T23:59:59');
+      if (!isNaN(sd.getTime()) && sd > td) continue;
+    }
+
+    const partnerName = String(r[3] || '').toLowerCase();
+    if (filterPartner && !partnerName.includes(filterPartner)) continue;
+
+    result.push({
+      date: dateStr,
+      orderId: String(r[1] || ''),
+      partnerNum: String(r[2] || ''),
+      partnerName: String(r[3] || ''),
+      articleNum: String(r[4] || ''),
+      productName: String(r[5] || ''),
+      qty: String(r[6] || ''),
+      dealerPrice: String(r[7] || ''),
+      totalAmount: String(r[8] || ''),
+      status: String(r[9] || 'Pending'),
+    });
+  }
+  return { success: true, data: result, total: result.length };
 }
 
 function syncDeviceSheetStatus(data) {

@@ -263,6 +263,7 @@
         <button class="gst-tab active" data-dtab="create">Create</button>
         <button class="gst-tab" data-dtab="open">Open</button>
         <button class="gst-tab" data-dtab="all">All</button>
+        <button class="gst-tab" data-dtab="sheet">Sheet</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -304,6 +305,23 @@
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevicePending(this.checked)"></th>
           <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Model</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="deviceSavedBody"></tbody></table></div>
+      </div>
+      <!-- Sheet sub-tab -->
+      <div id="deviceSheetTab" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <label style="font-size:.7rem;color:#64748b">From:</label>
+          <input type="date" id="dvcSheetDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <label style="font-size:.7rem;color:#64748b">To:</label>
+          <input type="date" id="dvcSheetDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+          <label style="font-size:.7rem;color:#64748b">Partner:</label>
+          <input type="text" id="dvcSheetPartner" placeholder="Search partner..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:180px">
+          <button class="btn-sm btn-outline" onclick="loadDeviceSheetData()" style="color:#6366f1;border-color:#6366f1">Filter</button>
+          <span style="font-size:.75rem;color:#64748b"><span id="dvcSheetCount">0</span> rows</span>
+        </div>
+        <div id="deviceSheetMsg" class="msg"></div>
+        <div style="overflow-x:auto"><table><thead><tr>
+          <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th>
+        </tr></thead><tbody id="deviceSheetBody"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -1365,11 +1383,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = t.dataset.dtab;
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('deviceSavedTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
+        document.getElementById('deviceSheetTab').style.display = tab === 'sheet' ? 'flex' : 'none';
         if (tab === 'open' || tab === 'all') {
           const from = document.getElementById('dvcDateFrom').value;
           const to = document.getElementById('dvcDateTo').value;
           loadDeviceSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
         }
+        if (tab === 'sheet') loadDeviceSheetData();
       });
     });
     document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
@@ -1650,11 +1670,15 @@ async function initDeviceTab() {
   document.getElementById('deviceOrderMsg').className = 'msg';
   document.getElementById('deviceCreateTab').style.display = 'flex';
   document.getElementById('deviceSavedTab').style.display = 'none';
+  document.getElementById('deviceSheetTab').style.display = 'none';
   document.querySelectorAll('#deviceSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#deviceSubTabs .gst-tab[data-dtab="create"]').classList.add('active');
   const dt = new Date();
-  document.getElementById('dvcDateTo').value = dt.toISOString().slice(0,10);
-  document.getElementById('dvcDateFrom').value = dt.toISOString().slice(0,10);
+  const ds = dt.toISOString().slice(0,10);
+  document.getElementById('dvcDateTo').value = ds;
+  document.getElementById('dvcDateFrom').value = ds;
+  document.getElementById('dvcSheetDateTo').value = ds;
+  document.getElementById('dvcSheetDateFrom').value = ds;
   try {
     await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally()]);
   } catch (e) {
@@ -2161,6 +2185,43 @@ async function syncDeviceSheetStatus() {
     loadDeviceSaved();
   } else {
     showMsg('devicePendingMsg', '\u274C Sync failed: ' + (result?.error || 'Unknown error'), 'error');
+  }
+}
+
+async function loadDeviceSheetData() {
+  const btn = document.querySelector('#deviceSheetTab .btn-outline');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const dateFrom = document.getElementById('dvcSheetDateFrom').value;
+  const dateTo = document.getElementById('dvcSheetDateTo').value;
+  const partner = document.getElementById('dvcSheetPartner').value;
+  const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner });
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+  if (result?.success) {
+    const tbody = document.getElementById('deviceSheetBody');
+    const data = Array.isArray(result.data) ? result.data : [];
+    document.getElementById('dvcSheetCount').textContent = data.length;
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
+    } else {
+      let html = '';
+      for (const r of data) {
+        html += '<tr>' +
+          '<td style="font-size:.7rem">' + r.date + '</td>' +
+          '<td style="font-size:.7rem">' + r.orderId + '</td>' +
+          '<td style="font-size:.7rem">' + r.partnerNum + '</td>' +
+          '<td style="font-size:.7rem">' + r.partnerName + '</td>' +
+          '<td style="font-size:.7rem">' + r.articleNum + '</td>' +
+          '<td style="font-size:.7rem">' + r.productName + '</td>' +
+          '<td style="font-size:.7rem">' + r.qty + '</td>' +
+          '<td style="font-size:.7rem">' + r.dealerPrice + '</td>' +
+          '<td style="font-size:.7rem">' + r.totalAmount + '</td>' +
+          '<td style="font-size:.7rem">' + r.status + '</td></tr>';
+      }
+      tbody.innerHTML = html;
+    }
+    showMsg('deviceSheetMsg', 'Loaded ' + data.length + ' rows', 'success');
+  } else {
+    showMsg('deviceSheetMsg', '\u274C ' + (result?.error || 'Failed to load'), 'error');
   }
 }
 
