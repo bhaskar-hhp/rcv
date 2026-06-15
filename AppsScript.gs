@@ -1166,29 +1166,12 @@ function fetchDeviceSheetData(data) {
     const result = [];
     for (let i = startRow; i < rows.length; i++) {
       const r = rows[i];
-      let dateStr = '';
-      if (r[0] && typeof r[0] === 'object' && typeof r[0].getMonth === 'function') {
-        dateStr = Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy');
-      } else {
-        dateStr = String(r[0] || '');
-      }
-
-      if (filterDateFrom) {
-        const sd = new Date(dateStr.split('-').reverse().join('-') + 'T00:00:00');
-        const fd = new Date(filterDateFrom + 'T00:00:00');
-        if (!isNaN(sd.getTime()) && sd < fd) continue;
-      }
-      if (filterDateTo) {
-        const sd = new Date(dateStr.split('-').reverse().join('-') + 'T00:00:00');
-        const td = new Date(filterDateTo + 'T23:59:59');
-        if (!isNaN(sd.getTime()) && sd > td) continue;
-      }
 
       const partnerName = String(r[3] || '').toLowerCase();
       if (filterPartner && !partnerName.includes(filterPartner)) continue;
 
       result.push({
-        date: dateStr,
+        date: String(r[0] || ''),
         orderId: String(r[1] || ''),
         partnerNum: String(r[2] || ''),
         partnerName: String(r[3] || ''),

@@ -2197,6 +2197,7 @@ async function loadDeviceSheetData() {
     const partner = document.getElementById('dvcSheetPartner')?.value || '';
     const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+    console.log('Sheet data result:', JSON.stringify(result));
     if (result?.success) {
       const tbody = document.getElementById('deviceSheetBody');
       const data = Array.isArray(result.data) ? result.data : [];
