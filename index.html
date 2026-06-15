@@ -2189,6 +2189,8 @@ async function syncDeviceSheetStatus() {
 }
 
 async function loadDeviceSheetData() {
+  document.getElementById('deviceCreateTab').style.display = 'none';
+  document.getElementById('deviceSavedTab').style.display = 'none';
   const btn = document.querySelector('#deviceSheetTab .btn-outline');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   try {
@@ -2197,10 +2199,9 @@ async function loadDeviceSheetData() {
     const partner = document.getElementById('dvcSheetPartner')?.value || '';
     const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
-    console.log('Sheet data result:', JSON.stringify(result));
     if (result?.success) {
       const tbody = document.getElementById('deviceSheetBody');
-      const data = Array.isArray(result.data) ? result.data : [];
+      const data = Array.isArray(result.data) ? result.data.reverse() : [];
       document.getElementById('dvcSheetCount').textContent = data.length;
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
