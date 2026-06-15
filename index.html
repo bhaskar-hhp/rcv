@@ -2191,37 +2191,42 @@ async function syncDeviceSheetStatus() {
 async function loadDeviceSheetData() {
   const btn = document.querySelector('#deviceSheetTab .btn-outline');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  const dateFrom = document.getElementById('dvcSheetDateFrom').value;
-  const dateTo = document.getElementById('dvcSheetDateTo').value;
-  const partner = document.getElementById('dvcSheetPartner').value;
-  const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner });
-  if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
-  if (result?.success) {
-    const tbody = document.getElementById('deviceSheetBody');
-    const data = Array.isArray(result.data) ? result.data : [];
-    document.getElementById('dvcSheetCount').textContent = data.length;
-    if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
-    } else {
-      let html = '';
-      for (const r of data) {
-        html += '<tr>' +
-          '<td style="font-size:.7rem">' + r.date + '</td>' +
-          '<td style="font-size:.7rem">' + r.orderId + '</td>' +
-          '<td style="font-size:.7rem">' + r.partnerNum + '</td>' +
-          '<td style="font-size:.7rem">' + r.partnerName + '</td>' +
-          '<td style="font-size:.7rem">' + r.articleNum + '</td>' +
-          '<td style="font-size:.7rem">' + r.productName + '</td>' +
-          '<td style="font-size:.7rem">' + r.qty + '</td>' +
-          '<td style="font-size:.7rem">' + r.dealerPrice + '</td>' +
-          '<td style="font-size:.7rem">' + r.totalAmount + '</td>' +
-          '<td style="font-size:.7rem">' + r.status + '</td></tr>';
+  try {
+    const dateFrom = document.getElementById('dvcSheetDateFrom')?.value || '';
+    const dateTo = document.getElementById('dvcSheetDateTo')?.value || '';
+    const partner = document.getElementById('dvcSheetPartner')?.value || '';
+    const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+    if (result?.success) {
+      const tbody = document.getElementById('deviceSheetBody');
+      const data = Array.isArray(result.data) ? result.data : [];
+      document.getElementById('dvcSheetCount').textContent = data.length;
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
+      } else {
+        let html = '';
+        for (const r of data) {
+          html += '<tr>' +
+            '<td style="font-size:.7rem">' + r.date + '</td>' +
+            '<td style="font-size:.7rem">' + r.orderId + '</td>' +
+            '<td style="font-size:.7rem">' + r.partnerNum + '</td>' +
+            '<td style="font-size:.7rem">' + r.partnerName + '</td>' +
+            '<td style="font-size:.7rem">' + r.articleNum + '</td>' +
+            '<td style="font-size:.7rem">' + r.productName + '</td>' +
+            '<td style="font-size:.7rem">' + r.qty + '</td>' +
+            '<td style="font-size:.7rem">' + r.dealerPrice + '</td>' +
+            '<td style="font-size:.7rem">' + r.totalAmount + '</td>' +
+            '<td style="font-size:.7rem">' + r.status + '</td></tr>';
+        }
+        tbody.innerHTML = html;
       }
-      tbody.innerHTML = html;
+      showMsg('deviceSheetMsg', 'Loaded ' + data.length + ' rows', 'success');
+    } else {
+      showMsg('deviceSheetMsg', '\u274C ' + (result?.error || 'No data returned'), 'error');
     }
-    showMsg('deviceSheetMsg', 'Loaded ' + data.length + ' rows', 'success');
-  } else {
-    showMsg('deviceSheetMsg', '\u274C ' + (result?.error || 'Failed to load'), 'error');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
+    showMsg('deviceSheetMsg', '\u274C ' + e.message, 'error');
   }
 }
 
