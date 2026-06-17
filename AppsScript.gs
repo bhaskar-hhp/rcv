@@ -1162,6 +1162,7 @@ function fetchDeviceSheetData(data) {
     const filterDateFrom = data?.dateFrom || '';
     const filterDateTo = data?.dateTo || '';
     const filterPartner = (data?.partner || '').toLowerCase();
+    const filterStatus = (data?.status || '').toLowerCase();
 
     const result = [];
     for (let i = startRow; i < rows.length; i++) {
@@ -1169,6 +1170,8 @@ function fetchDeviceSheetData(data) {
 
       const partnerName = String(r[3] || '').toLowerCase();
       if (filterPartner && !partnerName.includes(filterPartner)) continue;
+      const rowStatus = String(r[9] || 'Pending').toLowerCase();
+      if (filterStatus && rowStatus !== filterStatus) continue;
 
       result.push({
         date: String(r[0] || ''),
