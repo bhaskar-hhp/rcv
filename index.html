@@ -355,6 +355,10 @@
               style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px;background:#f1f5f9">
           </div>
           <div style="flex:1;min-width:120px">
+            <label style="font-size:.75rem;color:#64748b">Balance</label>
+            <div id="simBalanceDisplay" style="padding:6px 8px;font-size:.8rem;font-weight:600">—</div>
+          </div>
+          <div style="flex:1;min-width:120px">
             <label style="font-size:.75rem;color:#64748b">Target Qty</label>
             <input type="number" id="simTargetQty" min="1" placeholder="Qty" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
           </div>
@@ -1688,7 +1692,7 @@ async function initDeviceTab() {
   document.getElementById('dvcSheetDateTo').value = ds;
   document.getElementById('dvcSheetDateFrom').value = ds;
   try {
-    await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally()]);
+    await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally(), loadDeviceCustTallyMap()]);
   } catch (e) {
     showMsg('deviceOrderMsg', 'Failed to load: ' + e.message, 'error');
   }
@@ -1730,6 +1734,11 @@ async function loadDeviceTally() {
   deviceTallyMap = (result?.data) || {};
 }
 
+async function loadDeviceCustTallyMap() {
+  const result = await callScript('getCustomerTallyMapping');
+  deviceCustTallyMap = (result?.data) || {};
+}
+
 function renderDeviceTable() {
   const tbody = document.getElementById('deviceRowsBody');
   if (!tbody) return;
@@ -1741,7 +1750,7 @@ function renderDeviceTable() {
     const dealerPrice = parseFloat(product?.DealerPrice || product?.dealerPrice || r.dealerPrice || 0);
     const statusColor = r.status === 'Approved' ? 'badge-success' : r.status === 'Created' ? 'badge-pending' : 'badge-error';
     const isLocked = r.status === 'Created' || r.status === 'Approved';
-    const balRaw = lookupTallyBalance(r.partnerName, deviceTallyMap);
+    const balRaw = r.tallyName ? lookupTallyBalance(r.tallyName, deviceTallyMap) : lookupTallyBalance(r.partnerName, deviceTallyMap);
     const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
 
     const partName = (r.partnerName || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1785,7 +1794,7 @@ function renderDeviceTable() {
 
 function addDeviceRow() {
   const today = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
-  deviceRows.push({ id: ++deviceRowIdCounter, date: today, partnerNum: '', partnerName: '', articleNum: '', qty: '', dealerPrice: '', orderId: '', status: 'Pending' });
+  deviceRows.push({ id: ++deviceRowIdCounter, date: today, partnerNum: '', partnerName: '', tallyName: '', articleNum: '', qty: '', dealerPrice: '', orderId: '', status: 'Pending' });
   renderDeviceTable();
 }
 
@@ -1838,6 +1847,7 @@ function selectPartner(id, num) {
     row.partnerNum = num;
     row.partnerName = partner.CustomerName || partner.CustName || '';
   }
+  row.tallyName = deviceCustTallyMap[num] || '';
   const input = document.getElementById('partnerInput_' + id);
   if (input) input.value = row.partnerName;
   hidePartnerDropdown(id);
@@ -2011,6 +2021,7 @@ async function batchCreateAndApproveDeviceOrders() {
 }
 
 let deviceTallyMap = {};
+let deviceCustTallyMap = {};
 let deviceSavedOrders = [];
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -2036,10 +2047,11 @@ function toYmd(d) {
 }
 
 async function loadDeviceSaved(from, to) {
-  const [jioResult, sheetResult, tallyResult] = await Promise.all([
+  const [jioResult, sheetResult, tallyResult, custMapResult] = await Promise.all([
     callScript('getPendingDeviceOrders', { from, to }),
     callScript('getSavedDeviceOrders'),
     callScript('getTallyData'),
+    callScript('getCustomerTallyMapping'),
   ]);
   const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioDeviceOrder) : [];
   const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
@@ -2057,6 +2069,7 @@ async function loadDeviceSaved(from, to) {
   }
   deviceSavedOrders = jioOrders;
   deviceTallyMap = (tallyResult?.data) || {};
+  deviceCustTallyMap = (custMapResult?.data) || {};
   renderDeviceSaved();
 }
 
@@ -2256,6 +2269,7 @@ function initSimTab() {
   document.getElementById('simDateFrom').value = from.toISOString().slice(0,10);
   loadSimSaved(formatDateToParam(from), formatDateToParam(to));
   loadSimRdsData();
+  loadDeviceCustTallyMap();
 }
 
 function formatDateToParam(d) {
@@ -2301,6 +2315,19 @@ function selectSimName(num, name) {
   document.getElementById('simCustNameInput').value = name;
   document.getElementById('simCustNum').value = num;
   hideSimNameDropdown();
+
+  const tallyName = deviceCustTallyMap[num] || '';
+  const balEl = document.getElementById('simBalanceDisplay');
+  if (!tallyName) { balEl.textContent = '—'; balEl.style.color = '#64748b'; return; }
+  const balRaw = lookupTallyBalance(tallyName, simTallyMap);
+  const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
+  if (bal != null) {
+    balEl.textContent = '\u20B9 ' + bal.toLocaleString('en-IN');
+    balEl.style.color = bal < 0 ? '#dc2626' : '#16a34a';
+  } else {
+    balEl.textContent = '—';
+    balEl.style.color = '#64748b';
+  }
 }
 
 function hideSimNameDropdown() {
@@ -2368,10 +2395,11 @@ async function createAndApproveSimOrder() {
 }
 
 async function loadSimSaved(from, to) {
-  const [jioResult, sheetResult, tallyResult] = await Promise.all([
+  const [jioResult, sheetResult, tallyResult, custMapResult] = await Promise.all([
     callScript('getPendingSimOrders', { from, to }),
     callScript('getSavedSimOrders'),
     callScript('getTallyData'),
+    callScript('getCustomerTallyMapping'),
   ]);
   const jioOrders = Array.isArray(jioResult?.data) ? jioResult.data.map(mapJioSimOrder) : [];
   const sheetOrders = Array.isArray(sheetResult?.data) ? sheetResult.data : [];
@@ -2384,6 +2412,7 @@ async function loadSimSaved(from, to) {
   }
   simSavedOrders = jioOrders;
   simTallyMap = (tallyResult?.data) || {};
+  deviceCustTallyMap = (custMapResult?.data) || {};
   renderSimSaved();
 }
 
