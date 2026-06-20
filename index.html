@@ -2329,6 +2329,17 @@ function selectSimName(num, name) {
     const raw = lookupTallyBalance(name, tallyMap);
     if (raw != null) bal = parseFloat(String(raw).replace(/,/g, ''));
   }
+  if (bal == null && tallyName) {
+    const clean = s => s.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const p = clean(tallyName);
+    for (const key in tallyMap) {
+      if (clean(key).includes(p) || p.includes(clean(key))) {
+        const raw = tallyMap[key];
+        if (raw != null) bal = parseFloat(String(raw).replace(/,/g, ''));
+        break;
+      }
+    }
+  }
   if (bal != null) {
     balEl.textContent = '\u20B9 ' + bal.toLocaleString('en-IN');
     balEl.style.color = bal < 0 ? '#dc2626' : '#16a34a';
