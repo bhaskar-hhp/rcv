@@ -2316,11 +2316,19 @@ function selectSimName(num, name) {
   document.getElementById('simCustNum').value = num;
   hideSimNameDropdown();
 
-  const tallyName = deviceCustTallyMap[num] || '';
   const balEl = document.getElementById('simBalanceDisplay');
-  if (!tallyName) { balEl.textContent = '—'; balEl.style.color = '#64748b'; return; }
-  const balRaw = lookupTallyBalance(tallyName, simTallyMap);
-  const bal = balRaw != null ? parseFloat(String(balRaw).replace(/,/g, '')) : null;
+  const tallyMap = simTallyMap || deviceTallyMap || {};
+  const tallyName = deviceCustTallyMap[num] || '';
+  console.log('selectSimName', { num, name, tallyName, custMapKeys: Object.keys(deviceCustTallyMap).slice(0,5), tallyMapKeys: Object.keys(tallyMap).slice(0,5) });
+  let bal = null;
+  if (tallyName) {
+    const raw = lookupTallyBalance(tallyName, tallyMap);
+    if (raw != null) bal = parseFloat(String(raw).replace(/,/g, ''));
+  }
+  if (bal == null) {
+    const raw = lookupTallyBalance(name, tallyMap);
+    if (raw != null) bal = parseFloat(String(raw).replace(/,/g, ''));
+  }
   if (bal != null) {
     balEl.textContent = '\u20B9 ' + bal.toLocaleString('en-IN');
     balEl.style.color = bal < 0 ? '#dc2626' : '#16a34a';
