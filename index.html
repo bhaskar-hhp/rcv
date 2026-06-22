@@ -251,9 +251,11 @@
       <h2>Status Summary</h2>
       <div id="statusMsg" class="msg"></div>
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:#64748b">Filter:</span>
-        <button class="btn-sm" id="statusFilterToday" onclick="setStatusFilter('today')" style="background:#6366f1;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem">Today</button>
-        <input type="month" id="statusMonthPicker" style="font-size:.8rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px" onchange="setStatusFilter(this.value)">
+        <span style="font-size:.75rem;color:#64748b">From:</span>
+        <input type="date" id="statusDateFrom" style="font-size:.8rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+        <span style="font-size:.75rem;color:#64748b">To:</span>
+        <input type="date" id="statusDateTo" style="font-size:.8rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+        <button class="btn-sm btn-outline" onclick="loadStatusRange()" style="color:#6366f1;border-color:#6366f1">Filter</button>
       </div>
       <div id="statusContent" style="display:flex;gap:24px;flex-wrap:wrap"></div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px">
@@ -2300,20 +2302,17 @@ function initSimTab() {
   loadDeviceCustTallyMap();
 }
 
-let statusActivePeriod = '';
-
 function initStatusTab() {
   const el = document.getElementById('statusContent');
   const msg = document.getElementById('statusMsg');
   el.innerHTML = '<p style="color:#999">Loading...</p>';
   msg.className = 'msg';
-  const picker = document.getElementById('statusMonthPicker');
-  const now = new Date();
-  picker.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  statusActivePeriod = 'today';
-  document.getElementById('statusFilterToday').style.background = '#6366f1';
-  document.getElementById('statusFilterToday').style.color = '#fff';
-  loadPeriodData();
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  document.getElementById('statusDateFrom').value = thirtyDaysAgo.toISOString().slice(0,10);
+  document.getElementById('statusDateTo').value = today.toISOString().slice(0,10);
+  loadStatusRange();
   callScript('getStatusSummary').then(result => {
     if (!result?.success || !result?.data) {
       el.innerHTML = '<p style="color:#dc2626">Failed to load status</p>';
@@ -2341,21 +2340,9 @@ function initStatusTab() {
   });
 }
 
-function setStatusFilter(val) {
-  if (val === 'today') {
-    statusActivePeriod = 'today';
-    document.getElementById('statusFilterToday').style.background = '#6366f1';
-    document.getElementById('statusFilterToday').style.color = '#fff';
-  } else {
-    statusActivePeriod = val;
-    document.getElementById('statusFilterToday').style.background = '#e2e8f0';
-    document.getElementById('statusFilterToday').style.color = '#64748b';
-  }
-  loadPeriodData();
-}
-
-function loadPeriodData() {
-  const period = statusActivePeriod;
+function loadStatusRange() {
+  const fromDate = document.getElementById('statusDateFrom').value;
+  const toDate = document.getElementById('statusDateTo').value;
   const rcvSummary = document.getElementById('rcvPeriodSummary');
   const rcvDetail = document.getElementById('rcvPeriodDetail');
   const devSummary = document.getElementById('devicePeriodSummary');
@@ -2366,8 +2353,8 @@ function loadPeriodData() {
   devDetail.innerHTML = '';
 
   Promise.all([
-    callScript('getRcvPeriodData', { period }),
-    callScript('getDevicePeriodData', { period }),
+    callScript('getRcvRangeData', { fromDate, toDate }),
+    callScript('getDeviceRangeData', { fromDate, toDate }),
   ]).then(([rcvRes, devRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
     if (rcvRes?.success && rcvRes?.data) {

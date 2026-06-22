@@ -314,11 +314,11 @@ function doPost(e) {
       case 'getStatusSummary':
         result = getStatusSummary();
         break;
-      case 'getRcvPeriodData':
-        result = getRcvPeriodData(data.period);
+      case 'getRcvRangeData':
+        result = getRcvRangeData(data.fromDate, data.toDate);
         break;
-      case 'getDevicePeriodData':
-        result = getDevicePeriodData(data.period);
+      case 'getDeviceRangeData':
+        result = getDeviceRangeData(data.fromDate, data.toDate);
         break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
@@ -1428,7 +1428,23 @@ function getStatusSummary() {
   return { success: true, data: result };
 }
 
-function getRcvPeriodData(period) {
+function parseSheetDate(rawDate) {
+  if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+    return new Date(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate());
+  }
+  const s = String(rawDate || '').trim();
+  const monthNames = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+  if (parts) return new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+  const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+  if (mmm) {
+    const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()];
+    if (mon !== undefined) return new Date(parseInt(mmm[3]), mon, parseInt(mmm[1]));
+  }
+  return null;
+}
+
+function getRcvRangeData(fromDate, toDate) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const gst = ss.getSheetByName('gst_calc');
   if (!gst) return { success: false, error: 'gst_calc not found' };
@@ -1436,40 +1452,18 @@ function getRcvPeriodData(period) {
   const rows = gst.getDataRange().getValues();
   const parties = {};
   let totalBasic = 0, totalAmount = 0, totalOrders = 0;
-  const monthNames = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
-  const isToday = period === 'today';
-  const todayStr = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
+  const from = fromDate ? new Date(fromDate + 'T00:00:00') : null;
+  const to = toDate ? new Date(toDate + 'T23:59:59') : null;
 
   for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    const rawDate = r[0];
-    let dateStr = '', dayStr = '';
-    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
-      const y = rawDate.getFullYear();
-      const m = String(rawDate.getMonth() + 1).padStart(2, '0');
-      dateStr = y + '-' + m;
-      dayStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
-    } else {
-      const s = String(rawDate || '').trim();
-      const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
-      if (parts) {
-        const day = parseInt(parts[1]), mon = parseInt(parts[2]), yr = parseInt(parts[3]);
-        dateStr = yr + '-' + String(mon).padStart(2, '0');
-        dayStr = String(day).padStart(2, '0') + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mon-1] + '-' + yr;
-      } else {
-        const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
-        if (mmm) {
-          const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()] || '';
-          if (mon) { dateStr = mmm[3] + '-' + mon; dayStr = s; }
-        }
-      }
-    }
-    if (isToday) { if (dayStr !== todayStr) continue; }
-    else if (dateStr !== period) continue;
+    const rowDate = parseSheetDate(rows[i][0]);
+    if (!rowDate) continue;
+    if (from && rowDate < from) continue;
+    if (to && rowDate > to) continue;
 
-    const partner = String(r[2] || '').trim();
-    const basic = parseFloat(String(r[4] || '0').replace(/,/g, '')) || 0;
-    const amount = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+    const partner = String(rows[i][2] || '').trim();
+    const basic = parseFloat(String(rows[i][4] || '0').replace(/,/g, '')) || 0;
+    const amount = parseFloat(String(rows[i][5] || '0').replace(/,/g, '')) || 0;
 
     totalBasic += basic;
     totalAmount += amount;
@@ -1483,10 +1477,10 @@ function getRcvPeriodData(period) {
   }
 
   const partyWise = Object.values(parties).sort((a, b) => b.basic - a.basic);
-  return { success: true, data: { period, totalBasic, totalAmount, totalOrders, partyWise, totalParties: partyWise.length } };
+  return { success: true, data: { totalBasic, totalAmount, totalOrders, partyWise, totalParties: partyWise.length } };
 }
 
-function getDevicePeriodData(period) {
+function getDeviceRangeData(fromDate, toDate) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const deviceGid = 320908957;
   let sheet = ss.getSheets().filter(s => s.getSheetId() === deviceGid)[0];
@@ -1496,39 +1490,17 @@ function getDevicePeriodData(period) {
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
   const parties = {};
   let totalQty = 0, totalOrders = 0;
-  const isToday = period === 'today';
-  const todayStr = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
-  const monthNames = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+  const from = fromDate ? new Date(fromDate + 'T00:00:00') : null;
+  const to = toDate ? new Date(toDate + 'T23:59:59') : null;
 
   for (let i = startRow; i < rows.length; i++) {
-    const r = rows[i];
-    const rawDate = r[0];
-    let dateStr = '', dayStr = '';
-    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
-      const y = rawDate.getFullYear();
-      const m = String(rawDate.getMonth() + 1).padStart(2, '0');
-      dateStr = y + '-' + m;
-      dayStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
-    } else {
-      const s = String(rawDate || '').trim();
-      const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
-      if (parts) {
-        const day = parseInt(parts[1]), mon = parseInt(parts[2]), yr = parseInt(parts[3]);
-        dateStr = yr + '-' + String(mon).padStart(2, '0');
-        dayStr = String(day).padStart(2, '0') + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mon-1] + '-' + yr;
-      } else {
-        const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
-        if (mmm) {
-          const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()] || '';
-          if (mon) { dateStr = mmm[3] + '-' + mon; dayStr = s; }
-        }
-      }
-    }
-    if (isToday) { if (dayStr !== todayStr) continue; }
-    else if (dateStr !== period) continue;
+    const rowDate = parseSheetDate(rows[i][0]);
+    if (!rowDate) continue;
+    if (from && rowDate < from) continue;
+    if (to && rowDate > to) continue;
 
-    const partner = String(r[3] || '').trim();
-    const qty = parseInt(String(r[6] || '0').replace(/,/g, ''), 10) || 0;
+    const partner = String(rows[i][3] || '').trim();
+    const qty = parseInt(String(rows[i][6] || '0').replace(/,/g, ''), 10) || 0;
     totalQty += qty;
     totalOrders++;
 
@@ -1539,7 +1511,7 @@ function getDevicePeriodData(period) {
   }
 
   const partyWise = Object.values(parties).sort((a, b) => b.qty - a.qty);
-  return { success: true, data: { period, totalQty, totalOrders, partyWise, totalParties: partyWise.length } };
+  return { success: true, data: { totalQty, totalOrders, partyWise, totalParties: partyWise.length } };
 }
 
 function updateSimOrderStatus(orderId, newStatus) {
