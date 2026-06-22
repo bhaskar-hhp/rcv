@@ -2307,9 +2307,8 @@ function initStatusTab() {
   const msg = document.getElementById('statusMsg');
   msg.className = 'msg';
   const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  document.getElementById('statusDateFrom').value = thirtyDaysAgo.toISOString().slice(0,10);
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  document.getElementById('statusDateFrom').value = firstOfMonth.toISOString().slice(0,10);
   document.getElementById('statusDateTo').value = today.toISOString().slice(0,10);
   loadStatusRange();
 }
