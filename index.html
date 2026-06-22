@@ -142,6 +142,7 @@
         <button class="menu-item" data-tab="sim-orders">SIM Order</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="search">Balance Search</button>
+        <button class="menu-item" data-tab="status">Status</button>
         <button class="menu-item" data-tab="dedup">Dedup Voucher</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="setup">⚙ Setup</button>
@@ -241,6 +242,15 @@
         <span id="dedupStatus" style="font-size:.85rem;color:#64748b;align-self:center"></span>
       </div>
       <div id="dedupWrap" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Status -->
+  <div class="tab-pane" id="tab-status">
+    <div class="card">
+      <h2>Status Summary</h2>
+      <div id="statusMsg" class="msg"></div>
+      <div id="statusContent" style="display:flex;gap:24px;flex-wrap:wrap"></div>
     </div>
   </div>
 
@@ -478,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (t.dataset.tab === 'approval') fetchApprovalOrders();
       if (t.dataset.tab === 'device-orders') initDeviceTab();
       if (t.dataset.tab === 'sim-orders') initSimTab();
+      if (t.dataset.tab === 'status') initStatusTab();
       if (t.dataset.tab === 'reco') fetchRecoData();
       if (t.dataset.tab === 'dedup') loadDedupTab();
     });
@@ -2270,6 +2281,38 @@ function initSimTab() {
   loadSimSaved(formatDateToParam(from), formatDateToParam(to));
   loadSimRdsData();
   loadDeviceCustTallyMap();
+}
+
+function initStatusTab() {
+  const el = document.getElementById('statusContent');
+  const msg = document.getElementById('statusMsg');
+  el.innerHTML = '<p style="color:#999">Loading...</p>';
+  msg.className = 'msg';
+  callScript('getStatusSummary').then(result => {
+    if (!result?.success || !result?.data) {
+      el.innerHTML = '<p style="color:#dc2626">Failed to load status</p>';
+      return;
+    }
+    const d = result.data;
+    const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const statusBadge = (status, count) =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;padding:2px 8px;border-radius:12px;font-size:.75rem"><span style="font-weight:600">${count}</span> ${status}</span>`;
+    const card = (title, data, totalLabel, totalQty) => {
+      const statuses = Object.entries(data.statuses).sort((a, b) => b[1] - a[1]);
+      return `<div style="flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 12px 0;font-size:1rem">${title}</h3>
+        <div style="display:flex;gap:16px;margin-bottom:12px">
+          <div><span style="font-size:1.5rem;font-weight:700">${data.total}</span><br><span style="font-size:.75rem;color:#64748b">${totalLabel}</span></div>
+          ${totalQty != null ? `<div><span style="font-size:1.5rem;font-weight:700">${data.totalQty}</span><br><span style="font-size:.75rem;color:#64748b">${totalQty}</span></div>` : ''}
+          <div><span style="font-size:1.5rem;font-weight:700;color:#6366f1">${fmt(data.totalAmount || 0)}</span><br><span style="font-size:.75rem;color:#64748b">Total Amount</span></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${statuses.map(([s, c]) => statusBadge(s, c)).join('')}</div>
+      </div>`;
+    };
+    el.innerHTML = card('RCV Orders', d.rcv, 'Total Orders') + card('Device Orders', d.device, 'Total Orders', 'Total Qty');
+  }).catch(e => {
+    el.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>';
+  });
 }
 
 function formatDateToParam(d) {

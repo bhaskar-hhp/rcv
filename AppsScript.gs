@@ -224,6 +224,9 @@ function doPost(e) {
       case 'getTallyData':
         result = getTallyDataFromSheet();
         break;
+      case 'getCustomerTallyMapping':
+        result = getCustomerTallyMapping();
+        break;
 
       case 'getRecoData':
         result = getRecoDataFromSheet();
@@ -307,6 +310,9 @@ function doPost(e) {
         break;
       case 'getPendingSimOrders':
         result = fetchMySimOrdersList(data.from, data.to);
+        break;
+      case 'getStatusSummary':
+        result = getStatusSummary();
         break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
@@ -771,6 +777,20 @@ function getTallyDataFromSheet() {
     const name = String(rows[i][0] || '').trim();
     const closing = String(rows[i][2] || '').trim();
     if (name) map[name] = closing;
+  }
+  return { success: true, data: map };
+}
+
+function getCustomerTallyMapping() {
+  const targetGid = 226040199;
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Mapping sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < rows.length; i++) {
+    const custNum = String(rows[i][0] || '').trim();
+    const tallyName = String(rows[i][1] || '').trim();
+    if (custNum && tallyName) map[custNum] = tallyName;
   }
   return { success: true, data: map };
 }
@@ -1365,6 +1385,41 @@ function fetchSavedSimOrders() {
     });
   }
   return { success: true, data: data };
+}
+
+function getStatusSummary() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = { rcv: { total: 0, totalAmount: 0, statuses: {} }, device: { total: 0, totalQty: 0, statuses: {} } };
+
+  const gst = ss.getSheetByName('gst_calc');
+  if (gst) {
+    const rows = gst.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const status = String(r[8] || 'Pending').trim();
+      const amt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+      result.rcv.total++;
+      result.rcv.totalAmount += amt;
+      result.rcv.statuses[status] = (result.rcv.statuses[status] || 0) + 1;
+    }
+  }
+
+  const deviceGid = 320908957;
+  let deviceSheet = ss.getSheets().filter(s => s.getSheetId() === deviceGid)[0];
+  if (deviceSheet) {
+    const rows = deviceSheet.getDataRange().getValues();
+    const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+    for (let i = startRow; i < rows.length; i++) {
+      const r = rows[i];
+      const status = String(r[9] || 'Pending').trim();
+      const qty = parseInt(String(r[6] || '0').replace(/,/g, ''), 10) || 0;
+      result.device.total++;
+      result.device.totalQty += qty;
+      result.device.statuses[status] = (result.device.statuses[status] || 0) + 1;
+    }
+  }
+
+  return { success: true, data: result };
 }
 
 function updateSimOrderStatus(orderId, newStatus) {
