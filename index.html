@@ -1243,8 +1243,8 @@ function renderGstTable(filter, tallyMap) {
     if (!window._rcvDateFrom) {
       const today = new Date();
       const first = new Date(today.getFullYear(), today.getMonth(), 1);
-      window._rcvDateFrom = first.toISOString().slice(0,10);
-      window._rcvDateTo = today.toISOString().slice(0,10);
+      window._rcvDateFrom = localDateStr(first);
+      window._rcvDateTo = localDateStr(today);
     }
     const fromEl = document.getElementById('rcvAllDateFrom');
     const toEl = document.getElementById('rcvAllDateTo');
@@ -2349,8 +2349,8 @@ function initStatusTab() {
   msg.className = 'msg';
   const today = new Date();
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  document.getElementById('statusDateFrom').value = firstOfMonth.toISOString().slice(0,10);
-  document.getElementById('statusDateTo').value = today.toISOString().slice(0,10);
+  document.getElementById('statusDateFrom').value = localDateStr(firstOfMonth);
+  document.getElementById('statusDateTo').value = localDateStr(today);
   loadStatusRange();
 }
 
@@ -2433,6 +2433,9 @@ function loadStatusRange() {
   });
 }
 
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function formatDateToParam(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
