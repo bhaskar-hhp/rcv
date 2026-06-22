@@ -1200,6 +1200,27 @@ function renderGstTable(filter, tallyMap) {
     rows = rows.filter(r => String(r.partner || '').toLowerCase().includes(pf));
   }
 
+  if (filter === 'all') {
+    const fromVal = document.getElementById('rcvAllDateFrom')?.value || window._rcvDateFrom || '';
+    const toVal = document.getElementById('rcvAllDateTo')?.value || window._rcvDateTo || '';
+    if (fromVal || toVal) {
+      const parseRowDate = s => {
+        if (!s) return null;
+        const parts = s.match(/(\d{2})-(\d{2})-(\d{4})/);
+        return parts ? new Date(+parts[3], +parts[2] - 1, +parts[1]) : null;
+      };
+      const from = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+      const to = toVal ? new Date(toVal + 'T23:59:59') : null;
+      rows = rows.filter(r => {
+        const d = parseRowDate(r.date);
+        if (!d) return true;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+    }
+  }
+
   if (filter !== 'all' && !rows.length) {
     wrap.innerHTML = '<p style="color:#999">No pending orders.</p>';
     return;
@@ -1219,7 +1240,20 @@ function renderGstTable(filter, tallyMap) {
     <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
     <button class="btn-sm btn-outline" onclick="refreshGst()" style="margin-left:auto">↻ Refresh</button>`
   if (filter === 'all') {
+    if (!window._rcvDateFrom) {
+      const today = new Date();
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      window._rcvDateFrom = first.toISOString().slice(0,10);
+      window._rcvDateTo = today.toISOString().slice(0,10);
+    }
+    const fromEl = document.getElementById('rcvAllDateFrom');
+    const toEl = document.getElementById('rcvAllDateTo');
+    const fromVal = fromEl?.value || window._rcvDateFrom;
+    const toVal = toEl?.value || window._rcvDateTo;
     html += `<input type="text" id="partnerFilter" placeholder="Filter by Partner" value="${document.getElementById('partnerFilter')?.value || ''}" oninput="filterByPartner()" style="width:140px;padding:4px 8px;font-size:.75rem;margin-left:auto">`;
+    html += `<input type="date" id="rcvAllDateFrom" value="${fromVal}" style="width:130px;padding:4px 8px;font-size:.75rem">`;
+    html += `<input type="date" id="rcvAllDateTo" value="${toVal}" style="width:130px;padding:4px 8px;font-size:.75rem">`;
+    html += `<button class="btn-sm" onclick="filterRcvAllByDate()" style="background:#6366f1;color:#fff;border:none;padding:4px 10px;font-size:.75rem;border-radius:6px;cursor:pointer">Filter</button>`;
   }
   html += `</div>
   <div id="pendingMsg" class="msg"></div>
@@ -1282,6 +1316,13 @@ function filterByPartner() {
   renderGstTable(filter, tallyData);
   const el = document.getElementById('partnerFilter');
   if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function filterRcvAllByDate() {
+  window._rcvDateFrom = document.getElementById('rcvAllDateFrom')?.value || window._rcvDateFrom;
+  window._rcvDateTo = document.getElementById('rcvAllDateTo')?.value || window._rcvDateTo;
+  const filter = document.querySelector('.gst-tab.active')?.dataset?.filter || 'all';
+  renderGstTable(filter, tallyData);
 }
 
 async function pushPrimaryPendingRow(btn, rowIndex) {
