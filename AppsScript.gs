@@ -314,8 +314,11 @@ function doPost(e) {
       case 'getStatusSummary':
         result = getStatusSummary();
         break;
-      case 'getRcvMonthData':
-        result = getRcvMonthData(data.month);
+      case 'getRcvPeriodData':
+        result = getRcvPeriodData(data.period);
+        break;
+      case 'getDevicePeriodData':
+        result = getDevicePeriodData(data.period);
         break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
@@ -1425,40 +1428,44 @@ function getStatusSummary() {
   return { success: true, data: result };
 }
 
-function getRcvMonthData(month) {
+function getRcvPeriodData(period) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const gst = ss.getSheetByName('gst_calc');
   if (!gst) return { success: false, error: 'gst_calc not found' };
 
   const rows = gst.getDataRange().getValues();
   const parties = {};
-  let totalBasic = 0, totalAmount = 0;
-
+  let totalBasic = 0, totalAmount = 0, totalOrders = 0;
   const monthNames = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+  const isToday = period === 'today';
+  const todayStr = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
 
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const rawDate = r[0];
-    let dateStr = '';
+    let dateStr = '', dayStr = '';
     if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
       const y = rawDate.getFullYear();
       const m = String(rawDate.getMonth() + 1).padStart(2, '0');
       dateStr = y + '-' + m;
+      dayStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
     } else {
       const s = String(rawDate || '').trim();
       const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
       if (parts) {
         const day = parseInt(parts[1]), mon = parseInt(parts[2]), yr = parseInt(parts[3]);
         dateStr = yr + '-' + String(mon).padStart(2, '0');
+        dayStr = String(day).padStart(2, '0') + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mon-1] + '-' + yr;
       } else {
         const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
         if (mmm) {
           const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()] || '';
-          if (mon) dateStr = mmm[3] + '-' + mon;
+          if (mon) { dateStr = mmm[3] + '-' + mon; dayStr = s; }
         }
       }
     }
-    if (dateStr !== month) continue;
+    if (isToday) { if (dayStr !== todayStr) continue; }
+    else if (dateStr !== period) continue;
 
     const partner = String(r[2] || '').trim();
     const basic = parseFloat(String(r[4] || '0').replace(/,/g, '')) || 0;
@@ -1466,6 +1473,7 @@ function getRcvMonthData(month) {
 
     totalBasic += basic;
     totalAmount += amount;
+    totalOrders++;
 
     if (!partner) continue;
     if (!parties[partner]) parties[partner] = { partner, basic: 0, amount: 0, count: 0 };
@@ -1475,7 +1483,63 @@ function getRcvMonthData(month) {
   }
 
   const partyWise = Object.values(parties).sort((a, b) => b.basic - a.basic);
-  return { success: true, data: { month, totalBasic, totalAmount, partyWise, totalParties: partyWise.length } };
+  return { success: true, data: { period, totalBasic, totalAmount, totalOrders, partyWise, totalParties: partyWise.length } };
+}
+
+function getDevicePeriodData(period) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const deviceGid = 320908957;
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === deviceGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+
+  const rows = sheet.getDataRange().getValues();
+  const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+  const parties = {};
+  let totalQty = 0, totalOrders = 0;
+  const isToday = period === 'today';
+  const todayStr = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
+  const monthNames = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    const rawDate = r[0];
+    let dateStr = '', dayStr = '';
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+      const y = rawDate.getFullYear();
+      const m = String(rawDate.getMonth() + 1).padStart(2, '0');
+      dateStr = y + '-' + m;
+      dayStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
+    } else {
+      const s = String(rawDate || '').trim();
+      const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+      if (parts) {
+        const day = parseInt(parts[1]), mon = parseInt(parts[2]), yr = parseInt(parts[3]);
+        dateStr = yr + '-' + String(mon).padStart(2, '0');
+        dayStr = String(day).padStart(2, '0') + '-' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mon-1] + '-' + yr;
+      } else {
+        const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+        if (mmm) {
+          const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()] || '';
+          if (mon) { dateStr = mmm[3] + '-' + mon; dayStr = s; }
+        }
+      }
+    }
+    if (isToday) { if (dayStr !== todayStr) continue; }
+    else if (dateStr !== period) continue;
+
+    const partner = String(r[3] || '').trim();
+    const qty = parseInt(String(r[6] || '0').replace(/,/g, ''), 10) || 0;
+    totalQty += qty;
+    totalOrders++;
+
+    if (!partner) continue;
+    if (!parties[partner]) parties[partner] = { partner, qty: 0, count: 0 };
+    parties[partner].qty += qty;
+    parties[partner].count++;
+  }
+
+  const partyWise = Object.values(parties).sort((a, b) => b.qty - a.qty);
+  return { success: true, data: { period, totalQty, totalOrders, partyWise, totalParties: partyWise.length } };
 }
 
 function updateSimOrderStatus(orderId, newStatus) {
