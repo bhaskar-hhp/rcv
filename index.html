@@ -2334,7 +2334,7 @@ function loadStatusRange() {
   ]).then(([rcvRes, devRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const cardHtml = (title, data, fields) => {
-      let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
+      let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700${f.color ? ';color:' + f.color : ''}">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
       return `<div style="flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
         <h3 style="margin:0 0 12px 0;font-size:1rem">${title}</h3>
         <div style="display:flex;gap:16px;margin-bottom:12px">${body}</div>
@@ -2347,7 +2347,7 @@ function loadStatusRange() {
       const d = rcvRes.data;
       rcvCard = cardHtml('RCV Orders', d, [
         { val: d.totalOrders, label: 'Orders' },
-        { val: fmt(d.totalBasic), label: 'Basic' },
+        { val: fmt(d.totalBasic), label: 'Basic', color: '#6366f1' },
         { val: d.totalParties, label: 'Parties' },
       ]);
       rcvSummary.textContent = `Basic: ${fmt(d.totalBasic)} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;

@@ -1424,6 +1424,7 @@ function getRcvRangeData(fromDate, toDate) {
     if (to && rowDate > to) continue;
 
     const partner = String(rows[i][2] || '').trim();
+    if (partner.toUpperCase() === 'SELF') continue;
     const basic = parseFloat(String(rows[i][4] || '0').replace(/,/g, '')) || 0;
     const amount = parseFloat(String(rows[i][5] || '0').replace(/,/g, '')) || 0;
 
