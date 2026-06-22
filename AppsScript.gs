@@ -314,6 +314,9 @@ function doPost(e) {
       case 'getStatusSummary':
         result = getStatusSummary();
         break;
+      case 'getRcvMonthData':
+        result = getRcvMonthData(data.month);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -1420,6 +1423,59 @@ function getStatusSummary() {
   }
 
   return { success: true, data: result };
+}
+
+function getRcvMonthData(month) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const gst = ss.getSheetByName('gst_calc');
+  if (!gst) return { success: false, error: 'gst_calc not found' };
+
+  const rows = gst.getDataRange().getValues();
+  const parties = {};
+  let totalBasic = 0, totalAmount = 0;
+
+  const monthNames = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const rawDate = r[0];
+    let dateStr = '';
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+      const y = rawDate.getFullYear();
+      const m = String(rawDate.getMonth() + 1).padStart(2, '0');
+      dateStr = y + '-' + m;
+    } else {
+      const s = String(rawDate || '').trim();
+      const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+      if (parts) {
+        const day = parseInt(parts[1]), mon = parseInt(parts[2]), yr = parseInt(parts[3]);
+        dateStr = yr + '-' + String(mon).padStart(2, '0');
+      } else {
+        const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+        if (mmm) {
+          const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()] || '';
+          if (mon) dateStr = mmm[3] + '-' + mon;
+        }
+      }
+    }
+    if (dateStr !== month) continue;
+
+    const partner = String(r[2] || '').trim();
+    const basic = parseFloat(String(r[4] || '0').replace(/,/g, '')) || 0;
+    const amount = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+
+    totalBasic += basic;
+    totalAmount += amount;
+
+    if (!partner) continue;
+    if (!parties[partner]) parties[partner] = { partner, basic: 0, amount: 0, count: 0 };
+    parties[partner].basic += basic;
+    parties[partner].amount += amount;
+    parties[partner].count++;
+  }
+
+  const partyWise = Object.values(parties).sort((a, b) => b.basic - a.basic);
+  return { success: true, data: { month, totalBasic, totalAmount, partyWise, totalParties: partyWise.length } };
 }
 
 function updateSimOrderStatus(orderId, newStatus) {

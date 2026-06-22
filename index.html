@@ -250,7 +250,13 @@
     <div class="card">
       <h2>Status Summary</h2>
       <div id="statusMsg" class="msg"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+        <label style="font-size:.75rem;color:#64748b">RCV Month:</label>
+        <input type="month" id="rcvMonthPicker" style="font-size:.8rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px" onchange="loadRcvMonthData()">
+        <span id="rcvMonthSummary" style="font-size:.85rem;color:#64748b"></span>
+      </div>
       <div id="statusContent" style="display:flex;gap:24px;flex-wrap:wrap"></div>
+      <div id="rcvMonthDetail" style="margin-top:16px;overflow-x:auto"></div>
     </div>
   </div>
 
@@ -2288,6 +2294,10 @@ function initStatusTab() {
   const msg = document.getElementById('statusMsg');
   el.innerHTML = '<p style="color:#999">Loading...</p>';
   msg.className = 'msg';
+  const picker = document.getElementById('rcvMonthPicker');
+  const now = new Date();
+  picker.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  loadRcvMonthData();
   callScript('getStatusSummary').then(result => {
     if (!result?.success || !result?.data) {
       el.innerHTML = '<p style="color:#dc2626">Failed to load status</p>';
@@ -2312,6 +2322,41 @@ function initStatusTab() {
     el.innerHTML = card('RCV Orders', d.rcv, 'Total Orders') + card('Device Orders', d.device, 'Total Orders', 'Total Qty');
   }).catch(e => {
     el.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>';
+  });
+}
+
+function loadRcvMonthData() {
+  const picker = document.getElementById('rcvMonthPicker');
+  const month = picker.value;
+  if (!month) return;
+  const detail = document.getElementById('rcvMonthDetail');
+  const summary = document.getElementById('rcvMonthSummary');
+  summary.textContent = 'Loading...';
+  callScript('getRcvMonthData', { month }).then(result => {
+    if (!result?.success || !result?.data) {
+      summary.textContent = 'Failed';
+      detail.innerHTML = '';
+      return;
+    }
+    const d = result.data;
+    const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    summary.textContent = `Basic: ${fmt(d.totalBasic)} | Amount: ${fmt(d.totalAmount)} | Parties: ${d.totalParties}`;
+    if (!d.partyWise || !d.partyWise.length) {
+      detail.innerHTML = '<p style="color:#999;font-size:.85rem">No data for this month</p>';
+      return;
+    }
+    let html = '<table style="font-size:.8rem"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Basic</th><th style="text-align:right">Amount</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
+    d.partyWise.forEach((p, i) => {
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td>
+        <td style="text-align:right">${fmt(p.basic)}</td>
+        <td style="text-align:right">${fmt(p.amount)}</td>
+        <td style="text-align:center">${p.count}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    detail.innerHTML = html;
   });
 }
 
