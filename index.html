@@ -2373,11 +2373,14 @@ function loadStatusRange() {
     callScript('getDeviceRangeData', { fromDate, toDate }),
   ]).then(([rcvRes, devRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const cardHtml = (title, data, fields) => {
+    const statusCard = (title, icon, bgColor, borderColor, fields) => {
       let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700${f.color ? ';color:' + f.color : ''}">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
-      return `<div style="flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 12px 0;font-size:1rem">${title}</h3>
-        <div style="display:flex;gap:16px;margin-bottom:12px">${body}</div>
+      return `<div style="flex:1;min-width:280px;background:${bgColor};border:1px solid ${borderColor};border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <span style="font-size:1.4rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)">${icon}</span>
+          <h3 style="margin:0;font-size:.95rem;color:#1e293b">${title}</h3>
+        </div>
+        <div style="display:flex;gap:20px">${body}</div>
       </div>`;
     };
 
@@ -2385,7 +2388,7 @@ function loadStatusRange() {
 
     if (rcvRes?.success && rcvRes?.data) {
       const d = rcvRes.data;
-      rcvCard = cardHtml('RCV Orders', d, [
+      rcvCard = statusCard('RCV Orders', '📋', 'linear-gradient(135deg,#eff6ff,#dbeafe)', '#bfdbfe', [
         { val: d.totalOrders, label: 'Orders' },
         { val: fmt(d.totalBasic), label: 'Basic', color: '#6366f1' },
         { val: d.totalParties, label: 'Parties' },
@@ -2408,7 +2411,7 @@ function loadStatusRange() {
 
     if (devRes?.success && devRes?.data) {
       const d = devRes.data;
-      devCard = cardHtml('Device Orders', d, [
+      devCard = statusCard('Device Orders', '📱', 'linear-gradient(135deg,#faf5ff,#ede9fe)', '#ddd6fe', [
         { val: d.totalOrders, label: 'Orders' },
         { val: d.totalQty, label: 'Qty' },
         { val: d.totalParties, label: 'Parties' },
