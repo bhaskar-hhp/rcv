@@ -2305,7 +2305,6 @@ function initSimTab() {
 function initStatusTab() {
   const el = document.getElementById('statusContent');
   const msg = document.getElementById('statusMsg');
-  el.innerHTML = '<p style="color:#999">Loading...</p>';
   msg.className = 'msg';
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
@@ -2313,40 +2312,17 @@ function initStatusTab() {
   document.getElementById('statusDateFrom').value = thirtyDaysAgo.toISOString().slice(0,10);
   document.getElementById('statusDateTo').value = today.toISOString().slice(0,10);
   loadStatusRange();
-  callScript('getStatusSummary').then(result => {
-    if (!result?.success || !result?.data) {
-      el.innerHTML = '<p style="color:#dc2626">Failed to load status</p>';
-      return;
-    }
-    const d = result.data;
-    const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-    const statusBadge = (status, count) =>
-      `<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;padding:2px 8px;border-radius:12px;font-size:.75rem"><span style="font-weight:600">${count}</span> ${status}</span>`;
-    const card = (title, data, totalLabel, totalQty) => {
-      const statuses = Object.entries(data.statuses).sort((a, b) => b[1] - a[1]);
-      return `<div style="flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
-        <h3 style="margin:0 0 12px 0;font-size:1rem">${title}</h3>
-        <div style="display:flex;gap:16px;margin-bottom:12px">
-          <div><span style="font-size:1.5rem;font-weight:700">${data.total}</span><br><span style="font-size:.75rem;color:#64748b">${totalLabel}</span></div>
-          ${totalQty != null ? `<div><span style="font-size:1.5rem;font-weight:700">${data.totalQty}</span><br><span style="font-size:.75rem;color:#64748b">${totalQty}</span></div>` : ''}
-          <div><span style="font-size:1.5rem;font-weight:700;color:#6366f1">${fmt(data.totalAmount || 0)}</span><br><span style="font-size:.75rem;color:#64748b">Total Amount</span></div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">${statuses.map(([s, c]) => statusBadge(s, c)).join('')}</div>
-      </div>`;
-    };
-    el.innerHTML = card('RCV Orders (All)', d.rcv, 'Total Orders') + card('Device Orders (All)', d.device, 'Total Orders', 'Total Qty');
-  }).catch(e => {
-    el.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>';
-  });
 }
 
 function loadStatusRange() {
   const fromDate = document.getElementById('statusDateFrom').value;
   const toDate = document.getElementById('statusDateTo').value;
+  const el = document.getElementById('statusContent');
   const rcvSummary = document.getElementById('rcvPeriodSummary');
   const rcvDetail = document.getElementById('rcvPeriodDetail');
   const devSummary = document.getElementById('devicePeriodSummary');
   const devDetail = document.getElementById('devicePeriodDetail');
+  el.innerHTML = '<p style="color:#999">Loading...</p>';
   rcvSummary.textContent = 'Loading...';
   devSummary.textContent = 'Loading...';
   rcvDetail.innerHTML = '';
@@ -2357,8 +2333,24 @@ function loadStatusRange() {
     callScript('getDeviceRangeData', { fromDate, toDate }),
   ]).then(([rcvRes, devRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const cardHtml = (title, data, fields) => {
+      let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
+      return `<div style="flex:1;min-width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
+        <h3 style="margin:0 0 12px 0;font-size:1rem">${title}</h3>
+        <div style="display:flex;gap:16px;margin-bottom:12px">${body}</div>
+      </div>`;
+    };
+
+    let rcvCard = '', devCard = '';
+
     if (rcvRes?.success && rcvRes?.data) {
       const d = rcvRes.data;
+      rcvCard = cardHtml('RCV Orders', d, [
+        { val: d.totalOrders, label: 'Orders' },
+        { val: fmt(d.totalBasic), label: 'Basic' },
+        { val: fmt(d.totalAmount), label: 'Amount' },
+        { val: d.totalParties, label: 'Parties' },
+      ]);
       rcvSummary.textContent = `Basic: ${fmt(d.totalBasic)} | Amount: ${fmt(d.totalAmount)} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
       if (d.partyWise?.length) {
         let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Basic</th><th style="text-align:right">Amount</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
@@ -2371,11 +2363,17 @@ function loadStatusRange() {
         rcvDetail.innerHTML = '<p style="color:#999;font-size:.8rem">No data</p>';
       }
     } else {
+      rcvCard = '<p style="color:#dc2626">Failed</p>';
       rcvSummary.textContent = 'Failed';
     }
 
     if (devRes?.success && devRes?.data) {
       const d = devRes.data;
+      devCard = cardHtml('Device Orders', d, [
+        { val: d.totalOrders, label: 'Orders' },
+        { val: d.totalQty, label: 'Qty' },
+        { val: d.totalParties, label: 'Parties' },
+      ]);
       devSummary.textContent = `Qty: ${d.totalQty} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
       if (d.partyWise?.length) {
         let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
@@ -2388,8 +2386,11 @@ function loadStatusRange() {
         devDetail.innerHTML = '<p style="color:#999;font-size:.8rem">No data</p>';
       }
     } else {
+      devCard = '<p style="color:#dc2626">Failed</p>';
       devSummary.textContent = 'Failed';
     }
+
+    el.innerHTML = rcvCard + devCard;
   });
 }
 

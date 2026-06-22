@@ -311,9 +311,6 @@ function doPost(e) {
       case 'getPendingSimOrders':
         result = fetchMySimOrdersList(data.from, data.to);
         break;
-      case 'getStatusSummary':
-        result = getStatusSummary();
-        break;
       case 'getRcvRangeData':
         result = getRcvRangeData(data.fromDate, data.toDate);
         break;
@@ -1391,41 +1388,6 @@ function fetchSavedSimOrders() {
     });
   }
   return { success: true, data: data };
-}
-
-function getStatusSummary() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const result = { rcv: { total: 0, totalAmount: 0, statuses: {} }, device: { total: 0, totalQty: 0, statuses: {} } };
-
-  const gst = ss.getSheetByName('gst_calc');
-  if (gst) {
-    const rows = gst.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      const status = String(r[8] || 'Pending').trim();
-      const amt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
-      result.rcv.total++;
-      result.rcv.totalAmount += amt;
-      result.rcv.statuses[status] = (result.rcv.statuses[status] || 0) + 1;
-    }
-  }
-
-  const deviceGid = 320908957;
-  let deviceSheet = ss.getSheets().filter(s => s.getSheetId() === deviceGid)[0];
-  if (deviceSheet) {
-    const rows = deviceSheet.getDataRange().getValues();
-    const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
-    for (let i = startRow; i < rows.length; i++) {
-      const r = rows[i];
-      const status = String(r[9] || 'Pending').trim();
-      const qty = parseInt(String(r[6] || '0').replace(/,/g, ''), 10) || 0;
-      result.device.total++;
-      result.device.totalQty += qty;
-      result.device.statuses[status] = (result.device.statuses[status] || 0) + 1;
-    }
-  }
-
-  return { success: true, data: result };
 }
 
 function parseSheetDate(rawDate) {
