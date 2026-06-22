@@ -2348,14 +2348,13 @@ function loadStatusRange() {
       rcvCard = cardHtml('RCV Orders', d, [
         { val: d.totalOrders, label: 'Orders' },
         { val: fmt(d.totalBasic), label: 'Basic' },
-        { val: fmt(d.totalAmount), label: 'Amount' },
         { val: d.totalParties, label: 'Parties' },
       ]);
-      rcvSummary.textContent = `Basic: ${fmt(d.totalBasic)} | Amount: ${fmt(d.totalAmount)} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
+      rcvSummary.textContent = `Basic: ${fmt(d.totalBasic)} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
       if (d.partyWise?.length) {
-        let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Basic</th><th style="text-align:right">Amount</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
+        let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Basic</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
         d.partyWise.forEach((p, i) => {
-          h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${fmt(p.basic)}</td><td style="text-align:right">${fmt(p.amount)}</td><td style="text-align:center">${p.count}</td></tr>`;
+          h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${fmt(p.basic)}</td><td style="text-align:center">${p.count}</td></tr>`;
         });
         h += '</tbody></table>';
         rcvDetail.innerHTML = h;
