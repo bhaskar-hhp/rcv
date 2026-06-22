@@ -1462,6 +1462,9 @@ function getDeviceRangeData(fromDate, toDate) {
     if (from && rowDate < from) continue;
     if (to && rowDate > to) continue;
 
+    const status = String(rows[i][9] || '').trim();
+    if (status !== 'Completely Dispatched') continue;
+
     const partner = String(rows[i][3] || '').trim();
     const qty = parseInt(String(rows[i][6] || '0').replace(/,/g, ''), 10) || 0;
     totalQty += qty;
