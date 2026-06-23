@@ -1118,7 +1118,7 @@ function saveDeviceOrderToSheet(data) {
     data.dealerPrice || '',
     data.totalAmount || '',
     data.status || 'Pending',
-    '',
+    data.location || '',
   ]);
   return { success: true };
 }

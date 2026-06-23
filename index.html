@@ -337,7 +337,7 @@
         <div id="deviceOrderMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllDevice(this.checked)"></th>
-          <th>Date</th><th>Partner</th><th>Balance</th><th>Product</th><th>Qty</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
+          <th>Date</th><th>Partner</th><th>Balance</th><th>Location</th><th>Product</th><th>Qty</th><th>Status</th><th>Order ID</th><th style="text-align:center">Actions</th>
         </tr></thead><tbody id="deviceRowsBody"></tbody></table></div>
         <div id="deviceBalanceResults" style="margin-top:8px"></div>
       </div>
@@ -1804,7 +1804,7 @@ async function initDeviceTab() {
   document.getElementById('dvcSheetDateTo').value = ds;
   document.getElementById('dvcSheetDateFrom').value = ds;
   try {
-    await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally(), loadDeviceCustTallyMap()]);
+    await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally(), loadDeviceCustTallyMap(), loadDeviceLocationMap()]);
   } catch (e) {
     showMsg('deviceOrderMsg', 'Failed to load: ' + e.message, 'error');
   }
@@ -1851,6 +1851,15 @@ async function loadDeviceCustTallyMap() {
   deviceCustTallyMap = (result?.data) || {};
 }
 
+async function loadDeviceLocationMap() {
+  const result = await callScript('getOutstandingData');
+  const map = {};
+  for (const r of (result?.data || [])) {
+    if (r.custId) map[r.custId] = r.location;
+  }
+  deviceLocationMap = map;
+}
+
 function renderDeviceTable() {
   const tbody = document.getElementById('deviceRowsBody');
   if (!tbody) return;
@@ -1886,6 +1895,7 @@ function renderDeviceTable() {
         </div>
       </td>
       <td style="font-size:.7rem;text-align:right;${bal != null ? (bal < 0 ? 'color:#dc2626' : 'color:#16a34a') : ''}">${bal == null ? '' : '\u20B9 ' + bal.toLocaleString('en-IN')}</td>
+      <td style="font-size:.7rem">${r.location || '—'}</td>
       <td><select onchange="onDeviceProductChange(${r.id},this)" style="max-width:180px;font-size:.7rem;padding:4px 6px" ${isLocked ? 'disabled' : ''}>${prodOpt}</select></td>
       <td><input type="number" value="${r.qty}" min="1" style="width:60px;font-size:.7rem;padding:4px 6px" onchange="onDeviceQtyChange(${r.id},this.value)" ${isLocked ? 'readonly' : ''}></td>
       <td><span class="badge ${statusColor}">${r.status}</span></td>
@@ -1898,7 +1908,7 @@ function renderDeviceTable() {
     </tr>`;
   }
   if (!deviceRows.length) {
-    html = '<tr><td colspan="9" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
+    html = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows. Add a row or refresh pending orders.</td></tr>';
   }
   tbody.innerHTML = html;
   document.getElementById('deviceSelCount').textContent = deviceSelRows.size;
@@ -1906,7 +1916,7 @@ function renderDeviceTable() {
 
 function addDeviceRow() {
   const today = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
-  deviceRows.push({ id: ++deviceRowIdCounter, date: today, partnerNum: '', partnerName: '', tallyName: '', articleNum: '', qty: '', dealerPrice: '', orderId: '', status: 'Pending' });
+  deviceRows.push({ id: ++deviceRowIdCounter, date: today, partnerNum: '', partnerName: '', tallyName: '', location: '', articleNum: '', qty: '', dealerPrice: '', orderId: '', status: 'Pending' });
   renderDeviceTable();
 }
 
@@ -1960,6 +1970,7 @@ function selectPartner(id, num) {
     row.partnerName = partner.CustomerName || partner.CustName || '';
   }
   row.tallyName = deviceCustTallyMap[num] || '';
+  row.location = deviceLocationMap[num] || '';
   const input = document.getElementById('partnerInput_' + id);
   if (input) input.value = row.partnerName;
   hidePartnerDropdown(id);
@@ -2010,6 +2021,7 @@ async function createDeviceOrderSingle(btn, id) {
       articleNum: row.articleNum, productName: product?.ArticleDesc || '',
       qty: row.qty, dealerPrice: row.dealerPrice,
       totalAmount: parseFloat(row.qty) * parseFloat(row.dealerPrice || 0), status: 'Created',
+      location: row.location || '',
     });
     renderDeviceTable();
     showMsg('deviceOrderMsg', '\u2705 Order ' + result.orderNum + ' created', 'success');
@@ -2060,6 +2072,7 @@ async function batchCreateDeviceOrders() {
         articleNum: row.articleNum, productName: product?.ArticleDesc || '',
         qty: row.qty, dealerPrice: row.dealerPrice,
         totalAmount: parseFloat(row.qty) * parseFloat(row.dealerPrice || 0), status: 'Created',
+        location: row.location || '',
       });
       count++;
     }
@@ -2116,6 +2129,7 @@ async function batchCreateAndApproveDeviceOrders() {
         articleNum: row.articleNum, productName: product?.ArticleDesc || '',
         qty: row.qty, dealerPrice: row.dealerPrice,
         totalAmount: parseFloat(row.qty) * parseFloat(row.dealerPrice || 0), status: 'Created',
+        location: row.location || '',
       });
       created++;
       const appResult = await callScript('approveDeviceOrder', { orderNum: result.orderNum });
@@ -2134,6 +2148,7 @@ async function batchCreateAndApproveDeviceOrders() {
 
 let deviceTallyMap = {};
 let deviceCustTallyMap = {};
+let deviceLocationMap = {};
 let deviceSavedOrders = [];
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
