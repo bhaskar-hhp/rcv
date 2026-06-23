@@ -382,7 +382,7 @@
         </div>
         <div id="deviceSheetMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th>
+          <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Location</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th>
         </tr></thead><tbody id="deviceSheetBody"></tbody></table></div>
       </div>
       <!-- Models sub-tab -->
@@ -2353,7 +2353,7 @@ async function loadDeviceSheetData() {
       const data = Array.isArray(result.data) ? result.data.reverse() : [];
       document.getElementById('dvcSheetCount').textContent = data.length;
       if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
       } else {
         let html = '';
         for (const r of data) {
@@ -2362,6 +2362,7 @@ async function loadDeviceSheetData() {
             '<td style="font-size:.7rem">' + r.orderId + '</td>' +
             '<td style="font-size:.7rem">' + r.partnerNum + '</td>' +
             '<td style="font-size:.7rem">' + r.partnerName + '</td>' +
+            '<td style="font-size:.7rem">' + (r.location || '') + '</td>' +
             '<td style="font-size:.7rem">' + r.articleNum + '</td>' +
             '<td style="font-size:.7rem">' + r.productName + '</td>' +
             '<td style="font-size:.7rem">' + r.qty + '</td>' +

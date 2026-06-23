@@ -1231,6 +1231,7 @@ function fetchDeviceSheetData(data) {
         dealerPrice: String(r[7] || ''),
         totalAmount: String(r[8] || ''),
         status: String(r[9] || 'Pending'),
+        location: String(r[10] || ''),
       });
     }
     return { success: true, data: result, total: result.length };
