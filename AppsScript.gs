@@ -1356,7 +1356,7 @@ function getOutstandingData() {
   const result = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || ''), balance: String(r[3] || '') });
+    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || '') });
   }
   return { success: true, data: result, headers, total: result.length };
 }
@@ -1365,7 +1365,7 @@ function addOutstandingRowToSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
   if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
-  sheet.appendRow([data.custId || '', data.tallyName || '', data.location || '', data.balance || '']);
+  sheet.appendRow([data.custId || '', data.tallyName || '', data.location || '']);
   return { success: true };
 }
 
@@ -1386,7 +1386,6 @@ function updateOutstandingRowInSheet(data) {
   if (data.custId !== undefined) sheet.getRange(rowIndex, 1).setValue(data.custId);
   if (data.tallyName !== undefined) sheet.getRange(rowIndex, 2).setValue(data.tallyName);
   if (data.location !== undefined) sheet.getRange(rowIndex, 3).setValue(data.location);
-  if (data.balance !== undefined) sheet.getRange(rowIndex, 4).setValue(data.balance);
   return { success: true };
 }
 

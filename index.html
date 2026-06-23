@@ -2471,14 +2471,21 @@ let outstandingHeaders = [];
 
 async function loadOutstandingData() {
   const body = document.getElementById('outstandingBody');
-  body.innerHTML = '<tr><td colspan="5" style="color:#999">Loading...</td></tr>';
-  const res = await callScript('getOutstandingData');
-  if (!res?.success) {
-    body.innerHTML = '<tr><td colspan="5" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+  body.innerHTML = '<tr><td colspan="6" style="color:#999">Loading...</td></tr>';
+  const [outRes, tallyRes] = await Promise.all([
+    callScript('getOutstandingData'),
+    callScript('getTallyData')
+  ]);
+  if (!outRes?.success) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#dc2626">' + (outRes?.error || 'Failed') + '</td></tr>';
     return;
   }
-  outstandingData = res.data || [];
-  outstandingHeaders = res.headers || [];
+  outstandingData = outRes.data || [];
+  outstandingHeaders = outRes.headers || [];
+  const tallyMap = tallyRes?.data || {};
+  outstandingData.forEach(r => {
+    r._balance = lookupTallyBalance(r.tallyName, tallyMap);
+  });
   const headRow = document.getElementById('outstandingHeaderRow');
   if (headRow && outstandingHeaders.length) {
     headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>';
@@ -2499,8 +2506,8 @@ function renderOutstanding() {
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let h = '';
   rows.forEach(r => {
-    const bal = parseFloat(r.balance);
-    const hasBal = r.balance && r.balance.trim() !== '';
+    const bal = parseFloat(r._balance);
+    const hasBal = r._balance && String(r._balance).trim() !== '';
     const balColor = hasBal ? (bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b') : '#64748b';
     const balDisplay = hasBal ? bal.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
     h += `<tr>
@@ -2529,9 +2536,7 @@ async function addOutstandingRow() {
   if (custId === null) return;
   const tallyName = prompt('Enter Telly Name:');
   if (tallyName === null) return;
-  const balance = prompt('Enter Balance:');
-  if (balance === null) return;
-  const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim(), balance: balance.trim() });
+  const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
   if (res?.success) {
     document.getElementById('outstandingMsg').textContent = '\u2705 Row added';
     document.getElementById('outstandingMsg').className = 'msg success';
@@ -2551,9 +2556,7 @@ async function editOutstandingRow(rowIndex) {
   if (custId === null) return;
   const tallyName = prompt('Telly Name (current: ' + r.tallyName + '):', r.tallyName);
   if (tallyName === null) return;
-  const balance = prompt('Balance (current: ' + r.balance + '):', r.balance);
-  if (balance === null) return;
-  const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim(), balance: balance.trim() });
+  const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
   if (res?.success) {
     document.getElementById('outstandingMsg').textContent = '\u2705 Row updated';
     document.getElementById('outstandingMsg').className = 'msg success';
