@@ -143,6 +143,7 @@
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="search">Balance Search</button>
         <button class="menu-item" data-tab="status">Status</button>
+        <button class="menu-item" data-tab="outstanding">Outstanding</button>
         <button class="menu-item" data-tab="dedup">Dedup Voucher</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="setup">⚙ Setup</button>
@@ -270,6 +271,22 @@
           <div id="devicePeriodDetail" style="overflow-x:auto"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Tab: Outstanding -->
+  <div class="tab-pane" id="tab-outstanding">
+    <div class="card">
+      <h2>Outstanding</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <input type="text" id="outstandingFilter" placeholder="Filter by Location..." oninput="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:220px">
+        <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+        <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
+      </div>
+      <div id="outstandingMsg" class="msg"></div>
+      <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
+        <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th style="width:120px">Actions</th>
+      </tr></thead><tbody id="outstandingBody"></tbody></table></div>
     </div>
   </div>
 
@@ -521,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (t.dataset.tab === 'device-orders') initDeviceTab();
       if (t.dataset.tab === 'sim-orders') initSimTab();
       if (t.dataset.tab === 'status') initStatusTab();
+      if (t.dataset.tab === 'outstanding') loadOutstandingData();
       if (t.dataset.tab === 'reco') fetchRecoData();
       if (t.dataset.tab === 'dedup') loadDedupTab();
     });
@@ -2444,6 +2462,109 @@ async function deleteModelRow(rowIndex) {
     loadDeviceModels();
   } else {
     showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+// ── Outstanding ──────────────────────────────────────────────────────
+let outstandingData = [];
+let outstandingHeaders = [];
+
+async function loadOutstandingData() {
+  const body = document.getElementById('outstandingBody');
+  body.innerHTML = '<tr><td colspan="5" style="color:#999">Loading...</td></tr>';
+  const res = await callScript('getOutstandingData');
+  if (!res?.success) {
+    body.innerHTML = '<tr><td colspan="5" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    return;
+  }
+  outstandingData = res.data || [];
+  outstandingHeaders = res.headers || [];
+  const headRow = document.getElementById('outstandingHeaderRow');
+  if (headRow && outstandingHeaders.length) {
+    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th style="width:120px">Actions</th>';
+  }
+  renderOutstanding();
+}
+
+function renderOutstanding() {
+  const filter = (document.getElementById('outstandingFilter')?.value || '').trim().toLowerCase();
+  let rows = outstandingData;
+  if (filter) rows = rows.filter(r => r.location.toLowerCase().includes(filter));
+  const body = document.getElementById('outstandingBody');
+  document.getElementById('outstandingCount').textContent = rows.length;
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:#999">No data</td></tr>';
+    return;
+  }
+  const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let h = '';
+  rows.forEach(r => {
+    h += `<tr>
+      <td>${r.rowIndex}</td>
+      <td><strong>${e(r.location)}</strong></td>
+      <td>${e(r.custId)}</td>
+      <td>${e(r.tallyName)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="editOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
+        <button class="btn-sm btn-outline" onclick="deleteOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+      </td>
+    </tr>`;
+  });
+  body.innerHTML = h;
+}
+
+function filterOutstanding() {
+  renderOutstanding();
+}
+
+async function addOutstandingRow() {
+  const location = prompt('Enter Location:');
+  if (location === null) return;
+  const custId = prompt('Enter Customer ID:');
+  if (custId === null) return;
+  const tallyName = prompt('Enter Telly Name:');
+  if (tallyName === null) return;
+  const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
+  if (res?.success) {
+    document.getElementById('outstandingMsg').textContent = '\u2705 Row added';
+    document.getElementById('outstandingMsg').className = 'msg success';
+    loadOutstandingData();
+  } else {
+    document.getElementById('outstandingMsg').textContent = '\u274C ' + (res?.error || 'Failed');
+    document.getElementById('outstandingMsg').className = 'msg error';
+  }
+}
+
+async function editOutstandingRow(rowIndex) {
+  const r = outstandingData.find(x => x.rowIndex === rowIndex);
+  if (!r) return;
+  const location = prompt('Location (current: ' + r.location + '):', r.location);
+  if (location === null) return;
+  const custId = prompt('Customer ID (current: ' + r.custId + '):', r.custId);
+  if (custId === null) return;
+  const tallyName = prompt('Telly Name (current: ' + r.tallyName + '):', r.tallyName);
+  if (tallyName === null) return;
+  const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
+  if (res?.success) {
+    document.getElementById('outstandingMsg').textContent = '\u2705 Row updated';
+    document.getElementById('outstandingMsg').className = 'msg success';
+    loadOutstandingData();
+  } else {
+    document.getElementById('outstandingMsg').textContent = '\u274C ' + (res?.error || 'Failed');
+    document.getElementById('outstandingMsg').className = 'msg error';
+  }
+}
+
+async function deleteOutstandingRow(rowIndex) {
+  if (!confirm('Delete row ' + rowIndex + '?')) return;
+  const res = await callScript('deleteOutstandingRow', { rowIndex });
+  if (res?.success) {
+    document.getElementById('outstandingMsg').textContent = '\u2705 Row deleted';
+    document.getElementById('outstandingMsg').className = 'msg success';
+    loadOutstandingData();
+  } else {
+    document.getElementById('outstandingMsg').textContent = '\u274C ' + (res?.error || 'Failed');
+    document.getElementById('outstandingMsg').className = 'msg error';
   }
 }
 

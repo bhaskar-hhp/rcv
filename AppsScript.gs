@@ -329,6 +329,18 @@ function doPost(e) {
       case 'updateModelRow':
         result = updateModelRowInSheet(data);
         break;
+      case 'getOutstandingData':
+        result = getOutstandingData();
+        break;
+      case 'addOutstandingRow':
+        result = addOutstandingRowToSheet(data);
+        break;
+      case 'deleteOutstandingRow':
+        result = deleteOutstandingRowFromSheet(data.rowIndex);
+        break;
+      case 'updateOutstandingRow':
+        result = updateOutstandingRowInSheet(data);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -1328,6 +1340,52 @@ function updateModelRowInSheet(data) {
       sheet.getRange(rowIndex, i + 1).setValue(data[key]);
     }
   }
+  return { success: true };
+}
+
+// ── Outstanding (gid=226040199) ──────────────────────────────────────
+
+const OUTSTANDING_GID = 226040199;
+
+function getOutstandingData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
+  if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.length > 0 ? rows[0].map(h => String(h || '')) : [];
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || '') });
+  }
+  return { success: true, data: result, headers, total: result.length };
+}
+
+function addOutstandingRowToSheet(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
+  if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
+  sheet.appendRow([data.custId || '', data.tallyName || '', data.location || '']);
+  return { success: true };
+}
+
+function deleteOutstandingRowFromSheet(rowIndex) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
+  if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
+  sheet.deleteRow(rowIndex);
+  return { success: true };
+}
+
+function updateOutstandingRowInSheet(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
+  if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
+  const rowIndex = data.rowIndex;
+  if (!rowIndex) return { success: false, error: 'rowIndex required' };
+  if (data.custId !== undefined) sheet.getRange(rowIndex, 1).setValue(data.custId);
+  if (data.tallyName !== undefined) sheet.getRange(rowIndex, 2).setValue(data.tallyName);
+  if (data.location !== undefined) sheet.getRange(rowIndex, 3).setValue(data.location);
   return { success: true };
 }
 
