@@ -293,6 +293,7 @@
         <button class="gst-tab" data-dtab="open">Open</button>
         <button class="gst-tab" data-dtab="all">All</button>
         <button class="gst-tab" data-dtab="sheet">Sheet</button>
+        <button class="gst-tab" data-dtab="models">Models</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -359,6 +360,18 @@
         <div style="overflow-x:auto"><table><thead><tr>
           <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th>
         </tr></thead><tbody id="deviceSheetBody"></tbody></table></div>
+      </div>
+      <!-- Models sub-tab -->
+      <div id="deviceModelsTab" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="modelFilter" placeholder="Filter by Model name (Col D)..." oninput="filterDeviceModels()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:250px">
+          <button class="btn-sm btn-outline" onclick="addDeviceModelRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+          <span style="font-size:.75rem;color:#64748b"><span id="modelCount">0</span> rows</span>
+        </div>
+        <div id="deviceModelMsg" class="msg"></div>
+        <div style="overflow-x:auto"><table><thead><tr>
+          <th>#</th><th>A</th><th>B</th><th>C</th><th>D (Model)</th><th>E</th><th>F</th><th>G</th><th>H</th><th>I</th><th>J</th><th style="width:120px">Actions</th>
+        </tr></thead><tbody id="deviceModelBody"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -1467,12 +1480,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('deviceCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('deviceSavedTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
         document.getElementById('deviceSheetTab').style.display = tab === 'sheet' ? 'flex' : 'none';
+        document.getElementById('deviceModelsTab').style.display = tab === 'models' ? 'flex' : 'none';
         if (tab === 'open' || tab === 'all') {
           const from = document.getElementById('dvcDateFrom').value;
           const to = document.getElementById('dvcDateTo').value;
           loadDeviceSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
         }
         if (tab === 'sheet') loadDeviceSheetData();
+        if (tab === 'models') loadDeviceModels();
       });
     });
     document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
@@ -1754,6 +1769,7 @@ async function initDeviceTab() {
   document.getElementById('deviceCreateTab').style.display = 'flex';
   document.getElementById('deviceSavedTab').style.display = 'none';
   document.getElementById('deviceSheetTab').style.display = 'none';
+  document.getElementById('deviceModelsTab').style.display = 'none';
   document.querySelectorAll('#deviceSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('#deviceSubTabs .gst-tab[data-dtab="create"]').classList.add('active');
   const dt = new Date();
@@ -2322,6 +2338,105 @@ async function loadDeviceSheetData() {
   } catch (e) {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
     showMsg('deviceSheetMsg', '\u274C ' + e.message, 'error');
+  }
+}
+
+// ── Device Models ────────────────────────────────────────────────────
+let modelData = [];
+
+async function loadDeviceModels() {
+  const body = document.getElementById('deviceModelBody');
+  body.innerHTML = '<tr><td colspan="12" style="color:#999">Loading...</td></tr>';
+  const res = await callScript('getModelData');
+  if (!res?.success) {
+    body.innerHTML = '<tr><td colspan="12" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    return;
+  }
+  modelData = res.data || [];
+  renderDeviceModels();
+}
+
+function renderDeviceModels() {
+  const filter = (document.getElementById('modelFilter')?.value || '').trim().toLowerCase();
+  let rows = modelData;
+  if (filter) rows = rows.filter(r => r.colD.toLowerCase().includes(filter));
+  const body = document.getElementById('deviceModelBody');
+  document.getElementById('modelCount').textContent = rows.length;
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="12" style="color:#999">No data</td></tr>';
+    return;
+  }
+  let h = '';
+  rows.forEach(r => {
+    const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h += `<tr>
+      <td>${r.rowIndex}</td>
+      <td>${e(r.colA)}</td>
+      <td>${e(r.colB)}</td>
+      <td>${e(r.colC)}</td>
+      <td><strong>${e(r.colD)}</strong></td>
+      <td>${e(r.colE)}</td>
+      <td>${e(r.colF)}</td>
+      <td>${e(r.colG)}</td>
+      <td>${e(r.colH)}</td>
+      <td>${e(r.colI)}</td>
+      <td>${e(r.colJ)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="editModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
+        <button class="btn-sm btn-outline" onclick="deleteModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+      </td>
+    </tr>`;
+  });
+  body.innerHTML = h;
+}
+
+function filterDeviceModels() {
+  renderDeviceModels();
+}
+
+async function addDeviceModelRow() {
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const vals = {};
+  keys.forEach(k => vals[k] = '');
+  const colD = prompt('Enter Model name (Column D):');
+  if (colD === null) return;
+  vals.colD = colD.trim();
+  const res = await callScript('addModelRow', vals);
+  if (res?.success) {
+    showMsg('deviceModelMsg', '\u2705 Row added', 'success');
+    loadDeviceModels();
+  } else {
+    showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+async function editModelRow(rowIndex) {
+  const r = modelData.find(x => x.rowIndex === rowIndex);
+  if (!r) return;
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const updates = { rowIndex };
+  for (const k of keys) {
+    const val = prompt('Enter value for ' + k + ' (current: ' + r[k] + '):', r[k]);
+    if (val === null) return;
+    updates[k] = val;
+  }
+  const res = await callScript('updateModelRow', updates);
+  if (res?.success) {
+    showMsg('deviceModelMsg', '\u2705 Row updated', 'success');
+    loadDeviceModels();
+  } else {
+    showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+async function deleteModelRow(rowIndex) {
+  if (!confirm('Delete row ' + rowIndex + '?')) return;
+  const res = await callScript('deleteModelRow', { rowIndex });
+  if (res?.success) {
+    showMsg('deviceModelMsg', '\u2705 Row deleted', 'success');
+    loadDeviceModels();
+  } else {
+    showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
   }
 }
 

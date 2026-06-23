@@ -317,6 +317,18 @@ function doPost(e) {
       case 'getDeviceRangeData':
         result = getDeviceRangeData(data.fromDate, data.toDate);
         break;
+      case 'getModelData':
+        result = getModelData();
+        break;
+      case 'addModelRow':
+        result = addModelRowToSheet(data);
+        break;
+      case 'deleteModelRow':
+        result = deleteModelRowFromSheet(data.rowIndex);
+        break;
+      case 'updateModelRow':
+        result = updateModelRowInSheet(data);
+        break;
       default:
         result = { success: false, error: 'Unknown action: ' + action };
     }
@@ -1259,11 +1271,63 @@ function updateDeviceOrderStatus(orderId, newStatus) {
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
   for (let i = startRow; i < rows.length; i++) {
     if (String(rows[i][1] || '') === String(orderId)) {
-      sheet.getRange(i + 1, 10).setValue(newStatus || 'Approved');
+      sheet.getRange(i + 1, 6).setValue(newStatus || 'Approved');
       return { success: true };
     }
   }
   return { success: false, error: 'Order not found: ' + orderId };
+}
+
+// ── Device Models (gid=1436840246) ──────────────────────────────────────
+
+const MODELS_GID = 1436840246;
+
+function getModelData() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === MODELS_GID)[0];
+  if (!sheet) return { success: false, error: 'Models sheet not found' };
+  const rows = sheet.getDataRange().getValues();
+  const result = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    result.push({ rowIndex: i + 1, colA: String(r[0] || ''), colB: String(r[1] || ''), colC: String(r[2] || ''), colD: String(r[3] || ''), colE: String(r[4] || ''), colF: String(r[5] || ''), colG: String(r[6] || ''), colH: String(r[7] || ''), colI: String(r[8] || ''), colJ: String(r[9] || '') });
+  }
+  return { success: true, data: result, total: result.length };
+}
+
+function addModelRowToSheet(data) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === MODELS_GID)[0];
+  if (!sheet) return { success: false, error: 'Models sheet not found' };
+  const headers = sheet.getDataRange().getValues()[0] || [];
+  const colCount = headers.length || 10;
+  const row = [];
+  for (let i = 0; i < colCount; i++) {
+    row.push(data['col' + String.fromCharCode(65 + i)] || '');
+  }
+  sheet.appendRow(row);
+  return { success: true };
+}
+
+function deleteModelRowFromSheet(rowIndex) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === MODELS_GID)[0];
+  if (!sheet) return { success: false, error: 'Models sheet not found' };
+  sheet.deleteRow(rowIndex);
+  return { success: true };
+}
+
+function updateModelRowInSheet(data) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === MODELS_GID)[0];
+  if (!sheet) return { success: false, error: 'Models sheet not found' };
+  const headers = sheet.getDataRange().getValues()[0] || [];
+  const colCount = headers.length || 10;
+  const rowIndex = data.rowIndex;
+  if (!rowIndex) return { success: false, error: 'rowIndex required' };
+  for (let i = 0; i < colCount; i++) {
+    const key = 'col' + String.fromCharCode(65 + i);
+    if (data[key] !== undefined) {
+      sheet.getRange(rowIndex, i + 1).setValue(data[key]);
+    }
+  }
+  return { success: true };
 }
 
 // ── SIM Order ──────────────────────────────────────────────────────────
