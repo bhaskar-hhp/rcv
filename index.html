@@ -369,7 +369,7 @@
           <span style="font-size:.75rem;color:#64748b"><span id="modelCount">0</span> rows</span>
         </div>
         <div id="deviceModelMsg" class="msg"></div>
-        <div style="overflow-x:auto"><table><thead><tr>
+        <div style="overflow-x:auto"><table><thead><tr id="modelHeaderRow">
           <th>#</th><th>A</th><th>B</th><th>C</th><th>D (Model)</th><th>E</th><th>F</th><th>G</th><th>H</th><th>I</th><th>J</th><th style="width:120px">Actions</th>
         </tr></thead><tbody id="deviceModelBody"></tbody></table></div>
       </div>
@@ -2343,6 +2343,7 @@ async function loadDeviceSheetData() {
 
 // ── Device Models ────────────────────────────────────────────────────
 let modelData = [];
+let modelHeaders = [];
 
 async function loadDeviceModels() {
   const body = document.getElementById('deviceModelBody');
@@ -2353,6 +2354,16 @@ async function loadDeviceModels() {
     return;
   }
   modelData = res.data || [];
+  modelHeaders = res.headers || [];
+  const headRow = document.getElementById('modelHeaderRow');
+  if (headRow && modelHeaders.length) {
+    let hh = '<th>#</th>';
+    modelHeaders.forEach((h, i) => {
+      hh += '<th>' + (i === 3 ? h + ' (Model)' : h) + '</th>';
+    });
+    hh += '<th style="width:120px">Actions</th>';
+    headRow.innerHTML = hh;
+  }
   renderDeviceModels();
 }
 
@@ -2366,26 +2377,19 @@ function renderDeviceModels() {
     body.innerHTML = '<tr><td colspan="12" style="color:#999">No data</td></tr>';
     return;
   }
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
   let h = '';
   rows.forEach(r => {
     const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    h += `<tr>
-      <td>${r.rowIndex}</td>
-      <td>${e(r.colA)}</td>
-      <td>${e(r.colB)}</td>
-      <td>${e(r.colC)}</td>
-      <td><strong>${e(r.colD)}</strong></td>
-      <td>${e(r.colE)}</td>
-      <td>${e(r.colF)}</td>
-      <td>${e(r.colG)}</td>
-      <td>${e(r.colH)}</td>
-      <td>${e(r.colI)}</td>
-      <td>${e(r.colJ)}</td>
-      <td style="white-space:nowrap">
+    h += '<tr><td>' + r.rowIndex + '</td>';
+    keys.forEach(k => {
+      const val = e(r[k]);
+      h += k === 'colD' ? '<td><strong>' + val + '</strong></td>' : '<td>' + val + '</td>';
+    });
+    h += `<td style="white-space:nowrap">
         <button class="btn-sm btn-outline" onclick="editModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
         <button class="btn-sm btn-outline" onclick="deleteModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
-      </td>
-    </tr>`;
+      </td></tr>`;
   });
   body.innerHTML = h;
 }
@@ -2398,7 +2402,8 @@ async function addDeviceModelRow() {
   const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
   const vals = {};
   keys.forEach(k => vals[k] = '');
-  const colD = prompt('Enter Model name (Column D):');
+  const label = modelHeaders[3] || 'Model name';
+  const colD = prompt('Enter ' + label + ' (Column D):');
   if (colD === null) return;
   vals.colD = colD.trim();
   const res = await callScript('addModelRow', vals);
@@ -2415,8 +2420,10 @@ async function editModelRow(rowIndex) {
   if (!r) return;
   const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
   const updates = { rowIndex };
-  for (const k of keys) {
-    const val = prompt('Enter value for ' + k + ' (current: ' + r[k] + '):', r[k]);
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    const label = modelHeaders[i] || k;
+    const val = prompt('Enter value for ' + label + ' (current: ' + r[k] + '):', r[k]);
     if (val === null) return;
     updates[k] = val;
   }

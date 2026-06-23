@@ -1286,12 +1286,13 @@ function getModelData() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === MODELS_GID)[0];
   if (!sheet) return { success: false, error: 'Models sheet not found' };
   const rows = sheet.getDataRange().getValues();
+  const headers = rows.length > 0 ? rows[0].map(h => String(h || '')) : [];
   const result = [];
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     result.push({ rowIndex: i + 1, colA: String(r[0] || ''), colB: String(r[1] || ''), colC: String(r[2] || ''), colD: String(r[3] || ''), colE: String(r[4] || ''), colF: String(r[5] || ''), colG: String(r[6] || ''), colH: String(r[7] || ''), colI: String(r[8] || ''), colJ: String(r[9] || '') });
   }
-  return { success: true, data: result, total: result.length };
+  return { success: true, data: result, headers, total: result.length };
 }
 
 function addModelRowToSheet(data) {
