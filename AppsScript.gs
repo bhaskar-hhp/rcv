@@ -1589,12 +1589,14 @@ function getDeviceRangeData(fromDate, toDate) {
     if (status !== 'Completely Dispatched') continue;
 
     const partner = String(rows[i][3] || '').trim();
+    const location = String(rows[i][10] || '').trim();
     const qty = parseInt(String(rows[i][6] || '0').replace(/,/g, ''), 10) || 0;
     totalQty += qty;
     totalOrders++;
 
     if (!partner) continue;
-    if (!parties[partner]) parties[partner] = { partner, qty: 0, count: 0 };
+    if (!parties[partner]) parties[partner] = { partner, location, qty: 0, count: 0 };
+    if (!parties[partner].location && location) parties[partner].location = location;
     parties[partner].qty += qty;
     parties[partner].count++;
   }

@@ -2641,8 +2641,7 @@ function loadStatusRange() {
   Promise.all([
     callScript('getRcvRangeData', { fromDate, toDate }),
     callScript('getDeviceRangeData', { fromDate, toDate }),
-    callScript('getOutstandingData'),
-  ]).then(([rcvRes, devRes, outRes]) => {
+  ]).then(([rcvRes, devRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const statusCard = (title, icon, bgColor, borderColor, fields) => {
       let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700${f.color ? ';color:' + f.color : ''}">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
@@ -2688,15 +2687,10 @@ function loadStatusRange() {
         { val: d.totalParties, label: 'Parties' },
       ]);
       devSummary.textContent = `Qty: ${d.totalQty} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
-      if (d.partyWise?.length && outRes?.success) {
-        const locMap = {};
-        for (const o of (outRes.data || [])) {
-          if (o.tallyName) locMap[o.tallyName.toLowerCase().replace(/[^a-z0-9]/g,'')] = o.location;
-        }
-        const getLoc = name => locMap[(name || '').toLowerCase().replace(/[^a-z0-9]/g,'')] || 'Unknown';
+      if (d.partyWise?.length) {
         const groups = {};
         d.partyWise.forEach(p => {
-          const loc = getLoc(p.partner);
+          const loc = p.location || 'Unknown';
           if (!groups[loc]) groups[loc] = { location: loc, parties: [], totalQty: 0, totalOrders: 0 };
           groups[loc].parties.push(p);
           groups[loc].totalQty += p.qty;
@@ -2719,13 +2713,6 @@ function loadStatusRange() {
           });
           h += `</tbody></table></div></div>`;
         });
-        devDetail.innerHTML = h;
-      } else if (d.partyWise?.length) {
-        let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
-        d.partyWise.forEach((p, i) => {
-          h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${p.qty}</td><td style="text-align:center">${p.count}</td></tr>`;
-        });
-        h += '</tbody></table>';
         devDetail.innerHTML = h;
       } else {
         devDetail.innerHTML = '<p style="color:#999;font-size:.8rem">No data</p>';
