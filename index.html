@@ -2641,7 +2641,8 @@ function loadStatusRange() {
   Promise.all([
     callScript('getRcvRangeData', { fromDate, toDate }),
     callScript('getDeviceRangeData', { fromDate, toDate }),
-  ]).then(([rcvRes, devRes]) => {
+    callScript('getOutstandingData'),
+  ]).then(([rcvRes, devRes, outRes]) => {
     const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const statusCard = (title, icon, bgColor, borderColor, fields) => {
       let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700${f.color ? ';color:' + f.color : ''}">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
@@ -2687,7 +2688,39 @@ function loadStatusRange() {
         { val: d.totalParties, label: 'Parties' },
       ]);
       devSummary.textContent = `Qty: ${d.totalQty} | Orders: ${d.totalOrders} | Parties: ${d.totalParties}`;
-      if (d.partyWise?.length) {
+      if (d.partyWise?.length && outRes?.success) {
+        const locMap = {};
+        for (const o of (outRes.data || [])) {
+          if (o.tallyName) locMap[o.tallyName.toLowerCase().replace(/[^a-z0-9]/g,'')] = o.location;
+        }
+        const getLoc = name => locMap[(name || '').toLowerCase().replace(/[^a-z0-9]/g,'')] || 'Unknown';
+        const groups = {};
+        d.partyWise.forEach(p => {
+          const loc = getLoc(p.partner);
+          if (!groups[loc]) groups[loc] = { location: loc, parties: [], totalQty: 0, totalOrders: 0 };
+          groups[loc].parties.push(p);
+          groups[loc].totalQty += p.qty;
+          groups[loc].totalOrders += p.count;
+        });
+        const sortedLocs = Object.keys(groups).sort();
+        let h = '';
+        sortedLocs.forEach((loc, li) => {
+          const g = groups[loc];
+          const sectionId = 'devLoc' + li;
+          h += `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;cursor:pointer;font-size:.8rem;font-weight:600">
+              <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+              <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▾</span></span>
+            </div>
+            <div id="${sectionId}" style="display:block;padding:4px 12px 8px">
+              <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>`;
+          g.parties.forEach((p, i) => {
+            h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${p.qty}</td><td style="text-align:center">${p.count}</td></tr>`;
+          });
+          h += `</tbody></table></div></div>`;
+        });
+        devDetail.innerHTML = h;
+      } else if (d.partyWise?.length) {
         let h = '<table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>';
         d.partyWise.forEach((p, i) => {
           h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${p.qty}</td><td style="text-align:center">${p.count}</td></tr>`;
@@ -2708,6 +2741,18 @@ function loadStatusRange() {
 
 function localDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function toggleCollapse(id) {
+  const el = document.getElementById(id);
+  const icon = document.getElementById(id + 'Icon');
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    if (icon) icon.textContent = '▾';
+  } else {
+    el.style.display = 'none';
+    if (icon) icon.textContent = '▸';
+  }
 }
 function formatDateToParam(d) {
   const y = d.getFullYear();
