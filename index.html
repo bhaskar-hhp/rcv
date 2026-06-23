@@ -2499,14 +2499,16 @@ function renderOutstanding() {
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let h = '';
   rows.forEach(r => {
-    const bal = parseFloat(r.balance) || 0;
-    const balColor = bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b';
+    const bal = parseFloat(r.balance);
+    const hasBal = r.balance && r.balance.trim() !== '';
+    const balColor = hasBal ? (bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b') : '#64748b';
+    const balDisplay = hasBal ? bal.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
     h += `<tr>
       <td>${r.rowIndex}</td>
       <td><strong>${e(r.location)}</strong></td>
       <td>${e(r.custId)}</td>
       <td>${e(r.tallyName)}</td>
-      <td style="color:${balColor};font-weight:600">${bal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+      <td style="color:${balColor};font-weight:600">${balDisplay}</td>
       <td style="white-space:nowrap">
         <button class="btn-sm btn-outline" onclick="editOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
         <button class="btn-sm btn-outline" onclick="deleteOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
