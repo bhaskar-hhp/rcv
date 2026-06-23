@@ -1209,6 +1209,7 @@ function fetchDeviceSheetData(data) {
     const filterDateFrom = data?.dateFrom || '';
     const filterDateTo = data?.dateTo || '';
     const filterPartner = (data?.partner || '').toLowerCase();
+    const filterLocation = (data?.location || '').toLowerCase();
     const filterStatus = (data?.status || '').toLowerCase();
 
     const result = [];
@@ -1217,6 +1218,8 @@ function fetchDeviceSheetData(data) {
 
       const partnerName = String(r[3] || '').toLowerCase();
       if (filterPartner && !partnerName.includes(filterPartner)) continue;
+      const rowLocation = String(r[10] || '').toLowerCase();
+      if (filterLocation && !rowLocation.includes(filterLocation)) continue;
       const rowStatus = String(r[9] || 'Pending').toLowerCase();
       if (filterStatus && rowStatus !== filterStatus) continue;
 

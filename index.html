@@ -367,7 +367,9 @@
           <label style="font-size:.7rem;color:#64748b">To:</label>
           <input type="date" id="dvcSheetDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <label style="font-size:.7rem;color:#64748b">Partner:</label>
-          <input type="text" id="dvcSheetPartner" placeholder="Search partner..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:180px">
+          <input type="text" id="dvcSheetPartner" placeholder="Search partner..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:160px">
+          <label style="font-size:.7rem;color:#64748b">Location:</label>
+          <input type="text" id="dvcSheetLocation" placeholder="Filter location..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:140px">
           <label style="font-size:.7rem;color:#64748b">Status:</label>
           <select id="dvcSheetStatus" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:140px">
             <option value="">All</option>
@@ -2345,8 +2347,9 @@ async function loadDeviceSheetData() {
     const dateFrom = document.getElementById('dvcSheetDateFrom')?.value || '';
     const dateTo = document.getElementById('dvcSheetDateTo')?.value || '';
     const partner = document.getElementById('dvcSheetPartner')?.value || '';
+    const location = document.getElementById('dvcSheetLocation')?.value || '';
     const status = document.getElementById('dvcSheetStatus')?.value || '';
-    const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner, status });
+    const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner, location, status });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
     if (result?.success) {
       const tbody = document.getElementById('deviceSheetBody');
