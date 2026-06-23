@@ -279,7 +279,14 @@
     <div class="card">
       <h2>Outstanding</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <input type="text" id="outstandingFilter" placeholder="Filter by Location..." oninput="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:220px">
+        <select id="outstandingLocationFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+          <option value="">All Locations</option>
+        </select>
+        <select id="outstandingBalanceFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+          <option value="all">All</option>
+          <option value="positive">Positive Balance only</option>
+          <option value="negative">Negative Balance only</option>
+        </select>
         <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
         <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
       </div>
@@ -2486,6 +2493,11 @@ async function loadOutstandingData() {
   outstandingData.forEach(r => {
     r._balance = lookupTallyBalance(r.tallyName, tallyMap);
   });
+  const locs = [...new Set(outstandingData.map(r => r.location).filter(Boolean))].sort();
+  const locSel = document.getElementById('outstandingLocationFilter');
+  const curVal = locSel.value;
+  locSel.innerHTML = '<option value="">All Locations</option>' + locs.map(l => '<option value="' + l.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '">' + l + '</option>').join('');
+  locSel.value = curVal || '';
   const headRow = document.getElementById('outstandingHeaderRow');
   if (headRow && outstandingHeaders.length) {
     headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>';
@@ -2494,9 +2506,12 @@ async function loadOutstandingData() {
 }
 
 function renderOutstanding() {
-  const filter = (document.getElementById('outstandingFilter')?.value || '').trim().toLowerCase();
+  const locFilter = document.getElementById('outstandingLocationFilter')?.value || '';
+  const balFilter = document.getElementById('outstandingBalanceFilter')?.value || 'all';
   let rows = outstandingData;
-  if (filter) rows = rows.filter(r => r.location.toLowerCase().includes(filter));
+  if (locFilter) rows = rows.filter(r => r.location === locFilter);
+  if (balFilter === 'positive') rows = rows.filter(r => parseFloat(r._balance) > 0);
+  if (balFilter === 'negative') rows = rows.filter(r => parseFloat(r._balance) < 0);
   const body = document.getElementById('outstandingBody');
   document.getElementById('outstandingCount').textContent = rows.length;
   if (!rows.length) {
