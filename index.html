@@ -285,7 +285,7 @@
       </div>
       <div id="outstandingMsg" class="msg"></div>
       <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
-        <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th style="width:120px">Actions</th>
+        <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>
       </tr></thead><tbody id="outstandingBody"></tbody></table></div>
     </div>
   </div>
@@ -2481,7 +2481,7 @@ async function loadOutstandingData() {
   outstandingHeaders = res.headers || [];
   const headRow = document.getElementById('outstandingHeaderRow');
   if (headRow && outstandingHeaders.length) {
-    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th style="width:120px">Actions</th>';
+    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>';
   }
   renderOutstanding();
 }
@@ -2493,17 +2493,20 @@ function renderOutstanding() {
   const body = document.getElementById('outstandingBody');
   document.getElementById('outstandingCount').textContent = rows.length;
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="5" style="color:#999">No data</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="color:#999">No data</td></tr>';
     return;
   }
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let h = '';
   rows.forEach(r => {
+    const bal = parseFloat(r.balance) || 0;
+    const balColor = bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b';
     h += `<tr>
       <td>${r.rowIndex}</td>
       <td><strong>${e(r.location)}</strong></td>
       <td>${e(r.custId)}</td>
       <td>${e(r.tallyName)}</td>
+      <td style="color:${balColor};font-weight:600">${bal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
       <td style="white-space:nowrap">
         <button class="btn-sm btn-outline" onclick="editOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
         <button class="btn-sm btn-outline" onclick="deleteOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
@@ -2524,7 +2527,9 @@ async function addOutstandingRow() {
   if (custId === null) return;
   const tallyName = prompt('Enter Telly Name:');
   if (tallyName === null) return;
-  const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
+  const balance = prompt('Enter Balance:');
+  if (balance === null) return;
+  const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim(), balance: balance.trim() });
   if (res?.success) {
     document.getElementById('outstandingMsg').textContent = '\u2705 Row added';
     document.getElementById('outstandingMsg').className = 'msg success';
@@ -2544,7 +2549,9 @@ async function editOutstandingRow(rowIndex) {
   if (custId === null) return;
   const tallyName = prompt('Telly Name (current: ' + r.tallyName + '):', r.tallyName);
   if (tallyName === null) return;
-  const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
+  const balance = prompt('Balance (current: ' + r.balance + '):', r.balance);
+  if (balance === null) return;
+  const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim(), balance: balance.trim() });
   if (res?.success) {
     document.getElementById('outstandingMsg').textContent = '\u2705 Row updated';
     document.getElementById('outstandingMsg').className = 'msg success';
