@@ -369,7 +369,9 @@
           <label style="font-size:.7rem;color:#64748b">Partner:</label>
           <input type="text" id="dvcSheetPartner" placeholder="Search partner..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:160px">
           <label style="font-size:.7rem;color:#64748b">Location:</label>
-          <input type="text" id="dvcSheetLocation" placeholder="Filter location..." style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:140px">
+          <select id="dvcSheetLocation" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:150px">
+            <option value="">All Locations</option>
+          </select>
           <label style="font-size:.7rem;color:#64748b">Status:</label>
           <select id="dvcSheetStatus" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:140px">
             <option value="">All</option>
@@ -1807,6 +1809,20 @@ async function initDeviceTab() {
   document.getElementById('dvcSheetDateFrom').value = ds;
   try {
     await Promise.all([loadDeviceProducts(), loadAllPartners(), loadDeviceTally(), loadDeviceCustTallyMap(), loadDeviceLocationMap()]);
+    const locRes = await callScript('getOutstandingData');
+    if (locRes?.success) {
+      const locs = [...new Set((locRes.data || []).map(r => r.location).filter(Boolean))].sort();
+      const sel = document.getElementById('dvcSheetLocation');
+      if (sel) {
+        sel.innerHTML = '<option value="">All Locations</option>';
+        locs.forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l;
+          opt.textContent = l;
+          sel.appendChild(opt);
+        });
+      }
+    }
   } catch (e) {
     showMsg('deviceOrderMsg', 'Failed to load: ' + e.message, 'error');
   }
