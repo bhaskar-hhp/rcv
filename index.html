@@ -2732,16 +2732,16 @@ function loadStatusRange() {
           groups[loc].totalOrders += p.count;
         });
         const sortedLocs = Object.keys(groups).sort();
-        let h = '<div style="text-align:right;margin-bottom:6px"><button class="btn-toggle" onclick="toggleAllCollapse()" style="background:none;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:.75rem;cursor:pointer;color:#475569">🔽 Collapse All</button></div>';
+        let h = '<div style="text-align:right;margin-bottom:6px"><button class="btn-toggle" onclick="toggleAllCollapse()" style="background:none;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:.75rem;cursor:pointer;color:#475569">🔼 Expand All</button></div>';
         sortedLocs.forEach((loc, li) => {
           const g = groups[loc];
           const sectionId = 'devLoc' + li;
           h += `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
             <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#cbd5e1;cursor:pointer;font-size:.8rem;font-weight:600">
               <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
-              <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▾</span></span>
+              <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▸</span></span>
             </div>
-            <div id="${sectionId}" style="display:block;padding:4px 12px 8px">
+            <div id="${sectionId}" style="display:none;padding:4px 12px 8px">
               <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>`;
           g.parties.forEach((p, i) => {
             h += `<tr><td>${i+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${p.qty}</td><td style="text-align:center">${p.count}</td></tr>`;
