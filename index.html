@@ -664,6 +664,18 @@ async function testConnection() {
 }
 
 async function syncBalanceFromJio() {
+  showMsg('setupMsg', 'Saving & pushing config...', 'success');
+  saveSetup();
+  const cfg = loadCfg();
+  if (!cfg.jioCookies) {
+    showMsg('setupMsg', '⚠ Paste JIO_COOKIES first.', 'error');
+    return;
+  }
+  const push = await callScript('setup', cfg);
+  if (!push?.success) {
+    showMsg('setupMsg', '⚠ Failed to push config to server: ' + (push?.error || ''), 'error');
+    return;
+  }
   showMsg('setupMsg', 'Fetching Jio balance...', 'success');
   const result = await callScript('getJioBalance');
   if (result?.success && result.jioBalance !== undefined) {
