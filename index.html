@@ -2716,7 +2716,7 @@ function loadStatusRange() {
 
     if (devRes?.success && devRes?.data) {
       const d = devRes.data;
-      devCard = statusCard('Device Orders', '📱', 'linear-gradient(135deg,#faf5ff,#ede9fe)', '#ddd6fe', [
+      devCard = statusCard('Device Orders', '📱', 'linear-gradient(135deg,#f5f3ff,#e2d9f3)', '#c4b5fd', [
         { val: d.totalOrders, label: 'Orders' },
         { val: d.totalQty, label: 'Qty' },
         { val: d.totalParties, label: 'Parties' },
@@ -2737,7 +2737,7 @@ function loadStatusRange() {
           const g = groups[loc];
           const sectionId = 'devLoc' + li;
           h += `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#e2e8f0;cursor:pointer;font-size:.8rem;font-weight:600">
+            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#cbd5e1;cursor:pointer;font-size:.8rem;font-weight:600">
               <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
               <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▾</span></span>
             </div>
