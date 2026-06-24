@@ -2658,6 +2658,12 @@ function initSimTab() {
   loadSimSaved(formatDateToParam(from), formatDateToParam(to));
   loadSimRdsData();
   loadDeviceCustTallyMap();
+  callScript('getJioBalance').then(r => {
+    if (r?.success && r.jioBalance !== undefined) {
+      document.getElementById('simBalanceDisplay').textContent = '\u20B9 ' + Number(r.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
+      document.getElementById('simBalanceDisplay').style.color = r.jioBalance >= 0 ? '#16a34a' : '#dc2626';
+    }
+  });
 }
 
 function initStatusTab() {
