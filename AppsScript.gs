@@ -1213,8 +1213,14 @@ function fetchDeviceSheetData(data) {
     const filterStatus = (data?.status || '').toLowerCase();
 
     const result = [];
+    const from = filterDateFrom ? new Date(filterDateFrom + 'T00:00:00') : null;
+    const to = filterDateTo ? new Date(filterDateTo + 'T23:59:59') : null;
     for (let i = startRow; i < rows.length; i++) {
       const r = rows[i];
+
+      const rowDate = parseSheetDate(r[0]);
+      if (from && rowDate && rowDate < from) continue;
+      if (to && rowDate && rowDate > to) continue;
 
       const partnerName = String(r[3] || '').toLowerCase();
       if (filterPartner && !partnerName.includes(filterPartner)) continue;
