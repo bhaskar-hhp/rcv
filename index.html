@@ -2737,7 +2737,7 @@ function loadStatusRange() {
           const g = groups[loc];
           const sectionId = 'devLoc' + li;
           h += `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;cursor:pointer;font-size:.8rem;font-weight:600">
+            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f1f5f9;cursor:pointer;font-size:.8rem;font-weight:600">
               <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
               <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▾</span></span>
             </div>
