@@ -2732,12 +2732,12 @@ function loadStatusRange() {
           groups[loc].totalOrders += p.count;
         });
         const sortedLocs = Object.keys(groups).sort();
-        let h = '';
+        let h = '<div style="text-align:right;margin-bottom:6px"><button class="btn-toggle" onclick="toggleAllCollapse()" style="background:none;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:.75rem;cursor:pointer;color:#475569">🔽 Collapse All</button></div>';
         sortedLocs.forEach((loc, li) => {
           const g = groups[loc];
           const sectionId = 'devLoc' + li;
           h += `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f1f5f9;cursor:pointer;font-size:.8rem;font-weight:600">
+            <div onclick="toggleCollapse('${sectionId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#e2e8f0;cursor:pointer;font-size:.8rem;font-weight:600">
               <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
               <span style="color:#64748b;font-weight:400">Qty: ${g.totalQty} | Orders: ${g.totalOrders} | Parties: ${g.parties.length} <span id="${sectionId}Icon" style="margin-left:8px">▾</span></span>
             </div>
@@ -2775,6 +2775,18 @@ function toggleCollapse(id) {
     el.style.display = 'none';
     if (icon) icon.textContent = '▸';
   }
+}
+function toggleAllCollapse() {
+  const first = document.getElementById('devLoc0');
+  const allCollapsed = first && first.style.display === 'none';
+  document.querySelectorAll('[id^="devLoc"]').forEach(el => {
+    if (el.id.endsWith('Icon')) return;
+    const icon = document.getElementById(el.id + 'Icon');
+    el.style.display = allCollapsed ? 'block' : 'none';
+    if (icon) icon.textContent = allCollapsed ? '▾' : '▸';
+  });
+  const btn = document.querySelector('.btn-toggle');
+  if (btn) btn.innerHTML = allCollapsed ? '🔽 Collapse All' : '🔼 Expand All';
 }
 function formatDateToParam(d) {
   const y = d.getFullYear();
