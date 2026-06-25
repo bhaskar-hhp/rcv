@@ -1293,7 +1293,7 @@ function updateDeviceOrderStatus(orderId, newStatus) {
   const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
   for (let i = startRow; i < rows.length; i++) {
     if (String(rows[i][1] || '') === String(orderId)) {
-      sheet.getRange(i + 1, 6).setValue(newStatus || 'Approved');
+      sheet.getRange(i + 1, 10).setValue(newStatus || 'Approved');
       return { success: true };
     }
   }
