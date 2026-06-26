@@ -439,12 +439,21 @@
             <input type="number" id="simTargetQty" min="1" placeholder="Qty" style="width:100%;padding:6px 8px;font-size:.8rem;border:1px solid #d0d5dd;border-radius:6px">
           </div>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn-primary" onclick="createSimOrder()" style="min-width:120px">Create Order</button>
-            <button class="btn-sm btn-outline" onclick="createAndApproveSimOrder()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve</button>
-            <span style="font-size:.7rem;color:#64748b">Article 920001280 (fixed)</span>
+            <button class="btn-primary" id="simCreateBtn" onclick="createSimOrder()" style="min-width:120px">Create Order</button>
+            <button class="btn-sm btn-outline" id="simCreateApproveBtn" onclick="createAndApproveSimOrder()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve</button>
+            <button class="btn-sm btn-outline" onclick="addSimRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
           </div>
         </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" id="simBatchCreateBtn" onclick="batchCreateSimOrders()">Create Selected</button>
+          <button class="btn-sm btn-outline" id="simBatchCreateApproveBtn" onclick="batchCreateAndApproveSimOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
+          <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="simRowCount">0</span> rows</span>
+        </div>
         <div id="simOrderMsg" class="msg"></div>
+        <div style="overflow:visible"><table><thead><tr>
+          <th style="width:32px"><input type="checkbox" onchange="toggleAllSimRows(this.checked)"></th>
+          <th>Customer Name</th><th>Customer #</th><th>Balance</th><th>Qty</th><th style="text-align:center">Actions</th>
+        </tr></thead><tbody id="simRowsBody"></tbody></table></div>
       </div>
 
       <div id="simOpenTab" style="display:none;flex-direction:column;gap:8px">
@@ -2652,6 +2661,8 @@ async function deleteOutstandingRow(rowIndex) {
 let simSavedOrders = [];
 let simTallyMap = {};
 let simNameData = [];
+let simRows = [];
+let simRowIdCounter = 0;
 
 function initSimTab() {
   document.getElementById('simOrderMsg').className = 'msg';
@@ -2666,6 +2677,8 @@ function initSimTab() {
   loadSimSaved(formatDateToParam(from), formatDateToParam(to));
   loadSimRdsData();
   loadDeviceCustTallyMap();
+  simRows = [];
+  renderSimRows();
   callScript('getJioBalance').then(r => {
     if (r?.success && r.jioBalance !== undefined) {
       document.getElementById('simBalanceDisplay').textContent = '\u20B9 ' + Number(r.jioBalance).toLocaleString('en-IN', {minimumFractionDigits:2});
@@ -2899,6 +2912,127 @@ function selectSimName(num, name) {
 function hideSimNameDropdown() {
   const dd = document.getElementById('simNameDropdown');
   if (dd) dd.classList.remove('show');
+}
+
+function addSimRow() {
+  const custNum = document.getElementById('simCustNum').value.trim();
+  const custName = document.getElementById('simCustNameInput').value.trim();
+  const qty = document.getElementById('simTargetQty').value.trim();
+  if (!custNum || !qty) { showMsg('simOrderMsg', 'Select customer and enter Qty first.', 'error'); return; }
+  const id = ++simRowIdCounter;
+  const bal = lookupSimBalance(custNum);
+  simRows.push({ id, custNum, custName, qty, balance: bal });
+  document.getElementById('simCustNameInput').value = '';
+  document.getElementById('simCustNum').value = '';
+  document.getElementById('simTargetQty').value = '';
+  renderSimRows();
+  showMsg('simOrderMsg', '', 'success');
+}
+
+function removeSimRow(id) {
+  simRows = simRows.filter(r => r.id !== id);
+  renderSimRows();
+}
+
+function lookupSimBalance(custNum) {
+  const tallyMap = Object.keys(simTallyMap).length ? simTallyMap : deviceTallyMap;
+  const tallyName = deviceCustTallyMap[custNum] || '';
+  if (!tallyName) return null;
+  const raw = lookupTallyBalance(tallyName, tallyMap);
+  if (raw == null) return null;
+  const v = parseFloat(String(raw).replace(/,/g, ''));
+  return isNaN(v) ? null : v;
+}
+
+function toggleAllSimRows(checked) {
+  document.querySelectorAll('#simRowsBody .sim-row-cb').forEach(cb => cb.checked = checked);
+  document.getElementById('simRowCount').textContent = simRows.length + ' rows' + (checked ? ' (' + simRows.length + ' selected)' : '');
+}
+
+function getSimSelectedRows() {
+  const ids = new Set();
+  document.querySelectorAll('#simRowsBody .sim-row-cb:checked').forEach(cb => ids.add(parseInt(cb.dataset.rowid)));
+  return simRows.filter(r => ids.has(r.id));
+}
+
+function renderSimRows() {
+  const tbody = document.getElementById('simRowsBody');
+  if (!simRows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:16px">No rows added.</td></tr>';
+    document.getElementById('simRowCount').textContent = '0';
+    return;
+  }
+  let h = '';
+  for (const r of simRows) {
+    const bal = r.balance;
+    const balStr = bal != null ? '\u20B9 ' + Number(bal).toLocaleString('en-IN') : '—';
+    const balColor = bal < 0 ? '#dc2626' : (bal > 0 ? '#16a34a' : '#64748b');
+    h += `<tr>
+      <td style="text-align:center"><input type="checkbox" class="sim-row-cb" data-rowid="${r.id}" onchange="updateSimRowCount()"></td>
+      <td>${r.custName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td>
+      <td>${r.custNum}</td>
+      <td style="color:${balColor}">${balStr}</td>
+      <td>${r.qty}</td>
+      <td style="text-align:center"><button class="btn-sm btn-outline" onclick="removeSimRow(${r.id})" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Remove</button></td>
+    </tr>`;
+  }
+  tbody.innerHTML = h;
+  document.getElementById('simRowCount').textContent = simRows.length + ' rows';
+}
+
+function updateSimRowCount() {
+  const cbs = document.querySelectorAll('#simRowsBody .sim-row-cb:checked');
+  document.getElementById('simRowCount').textContent = simRows.length + ' rows (' + cbs.length + ' selected)';
+}
+
+async function batchCreateSimOrders() {
+  const rows = getSimSelectedRows();
+  if (!rows.length) { showMsg('simOrderMsg', 'Select rows to create.', 'error'); return; }
+  if (!confirm('Create ' + rows.length + ' SIM order(s)?')) return;
+  const btn = document.getElementById('simBatchCreateBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let ok = 0;
+  for (const r of rows) {
+    const result = await callScript('createSimOrder', { shipToParty: r.custNum, qty: r.qty });
+    if (result?.success && result.orderNum) {
+      await callScript('saveSimOrder', {
+        orderId: result.orderNum, customerNum: r.custNum, customerName: r.custName, qty: r.qty, status: 'Created',
+      });
+      ok++;
+      simRows = simRows.filter(x => x.id !== r.id);
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Create Selected'; }
+  renderSimRows();
+  showMsg('simOrderMsg', '\u2705 ' + ok + '/' + rows.length + ' created', ok === rows.length ? 'success' : 'error');
+  loadSimSaved();
+}
+
+async function batchCreateAndApproveSimOrders() {
+  const rows = getSimSelectedRows();
+  if (!rows.length) { showMsg('simOrderMsg', 'Select rows to process.', 'error'); return; }
+  if (!confirm('Create & Approve ' + rows.length + ' SIM order(s)?')) return;
+  const btn = document.getElementById('simBatchCreateApproveBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let ok = 0;
+  for (const r of rows) {
+    const result = await callScript('createSimOrder', { shipToParty: r.custNum, qty: r.qty });
+    if (result?.success && result.orderNum) {
+      await callScript('saveSimOrder', {
+        orderId: result.orderNum, customerNum: r.custNum, customerName: r.custName, qty: r.qty, status: 'Created',
+      });
+      const appResult = await callScript('approveSimOrder', { orderNum: result.orderNum });
+      if (appResult?.success) {
+        await callScript('updateSimOrderStatus', { orderId: result.orderNum, status: 'Approved' });
+      }
+      ok++;
+      simRows = simRows.filter(x => x.id !== r.id);
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Create & Approve Selected'; }
+  renderSimRows();
+  showMsg('simOrderMsg', '\u2705 ' + ok + '/' + rows.length + ' processed', ok === rows.length ? 'success' : 'error');
+  loadSimSaved();
 }
 
 async function createSimOrder() {
