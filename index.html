@@ -279,9 +279,21 @@
     <div class="card">
       <h2>Outstanding</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="outstandingSubTabs">
-        <button class="gst-tab active" data-otab="all">All</button>
+        <button class="gst-tab active" data-otab="summary">Summary</button>
+        <button class="gst-tab" data-otab="all">All</button>
       </div>
-      <div id="outstandingAllTab" style="display:flex;flex-direction:column;gap:8px">
+      <div id="outstandingSummaryTab" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="outSummaryFilter" onchange="renderOutstandingSummary()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+            <option value="all">All</option>
+            <option value="cr">Cr. only</option>
+            <option value="dr">Dr. only</option>
+          </select>
+          <span style="font-size:.75rem;color:#64748b"><span id="outSummaryLocs">0</span> locations</span>
+        </div>
+        <div id="outstandingSummaryBody"></div>
+      </div>
+      <div id="outstandingAllTab" style="display:none;flex-direction:column;gap:8px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select id="outstandingLocationFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
             <option value="">All Locations</option>
@@ -1568,7 +1580,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('#outstandingSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
         const tab = t.dataset.otab;
+        document.getElementById('outstandingSummaryTab').style.display = tab === 'summary' ? 'flex' : 'none';
         document.getElementById('outstandingAllTab').style.display = tab === 'all' ? 'flex' : 'none';
+        if (tab === 'summary') renderOutstandingSummary();
         if (tab === 'all') filterOutstanding();
       });
     });
@@ -2581,6 +2595,7 @@ async function loadOutstandingData() {
     headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>';
   }
   renderOutstanding();
+  renderOutstandingSummary();
 }
 
 function renderOutstanding() {
@@ -2622,6 +2637,51 @@ function renderOutstanding() {
         <button class="btn-sm btn-outline" onclick="deleteOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
       </td>
     </tr>`;
+  });
+  body.innerHTML = h;
+}
+
+function renderOutstandingSummary() {
+  const body = document.getElementById('outstandingSummaryBody');
+  const filter = document.getElementById('outSummaryFilter')?.value || 'all';
+  const groups = {};
+  for (const r of outstandingData) {
+    const b = parseFloat(r._balance);
+    if (isNaN(b)) continue;
+    if (filter === 'cr' && b <= 0) continue;
+    if (filter === 'dr' && b >= 0) continue;
+    const loc = r.location || 'Unknown';
+    if (!groups[loc]) groups[loc] = { parties: [], crSum: 0, drSum: 0 };
+    groups[loc].parties.push({ tallyName: r.tallyName, balance: b });
+    if (b > 0) groups[loc].crSum += b;
+    else groups[loc].drSum += b;
+  }
+  const locs = Object.keys(groups).sort();
+  document.getElementById('outSummaryLocs').textContent = locs.length;
+  if (!locs.length) {
+    body.innerHTML = '<div style="text-align:center;color:#999;padding:24px">No data</div>';
+    return;
+  }
+  let h = '';
+  locs.forEach((loc, i) => {
+    const g = groups[loc];
+    const sid = 'outSumLoc' + i;
+    h += `<div style="margin-bottom:6px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <div onclick="toggleCollapse('${sid}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#e2e8f0;cursor:pointer;font-size:.8rem;font-weight:600">
+        <span>${loc.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+        <span style="display:flex;gap:12px;font-weight:400">
+          <span style="color:#16a34a">Cr. ${g.crSum.toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+          <span style="color:#dc2626">Dr. ${Math.abs(g.drSum).toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+          <span id="${sid}Icon" style="margin-left:4px">▸</span>
+        </span>
+      </div>
+      <div id="${sid}" style="display:none;padding:4px 12px 8px">
+        <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Telly Name</th><th style="text-align:right">Balance</th></tr></thead><tbody>`;
+    g.parties.forEach((p, pi) => {
+      const balColor = p.balance > 0 ? '#16a34a' : '#dc2626';
+      h += `<tr><td>${pi+1}</td><td>${p.tallyName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right;color:${balColor};font-weight:600">${p.balance.toLocaleString('en-IN',{minimumFractionDigits:2})}</td></tr>`;
+    });
+    h += `</tbody></table></div></div>`;
   });
   body.innerHTML = h;
 }
