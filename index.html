@@ -293,6 +293,8 @@
           </select>
           <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
           <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
+          <span style="font-size:.75rem;color:#16a34a;font-weight:600">Cr. <span id="outstandingCr">0</span></span>
+          <span style="font-size:.75rem;color:#dc2626;font-weight:600">Dr. <span id="outstandingDr">0</span></span>
         </div>
         <div id="outstandingMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
@@ -2590,6 +2592,14 @@ function renderOutstanding() {
   if (balFilter === 'negative') rows = rows.filter(r => parseFloat(r._balance) < 0);
   const body = document.getElementById('outstandingBody');
   document.getElementById('outstandingCount').textContent = rows.length;
+  let crSum = 0, drSum = 0;
+  for (const r of rows) {
+    const b = parseFloat(r._balance);
+    if (!isNaN(b) && b > 0) crSum += b;
+    else if (!isNaN(b) && b < 0) drSum += b;
+  }
+  document.getElementById('outstandingCr').textContent = crSum.toLocaleString('en-IN', {minimumFractionDigits:2});
+  document.getElementById('outstandingDr').textContent = Math.abs(drSum).toLocaleString('en-IN', {minimumFractionDigits:2});
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="6" style="color:#999">No data</td></tr>';
     return;
