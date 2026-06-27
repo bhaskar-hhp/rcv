@@ -290,6 +290,8 @@
             <option value="dr">Dr. only</option>
           </select>
           <span style="font-size:.75rem;color:#64748b"><span id="outSummaryLocs">0</span> locations</span>
+          <span style="font-size:.75rem;color:#16a34a;font-weight:600">Cr. <span id="outSumCr">0</span></span>
+          <span style="font-size:.75rem;color:#dc2626;font-weight:600">Dr. <span id="outSumDr">0</span></span>
         </div>
         <div id="outstandingSummaryBody"></div>
       </div>
@@ -2645,6 +2647,7 @@ function renderOutstandingSummary() {
   const body = document.getElementById('outstandingSummaryBody');
   const filter = document.getElementById('outSummaryFilter')?.value || 'all';
   const groups = {};
+  let totalCr = 0, totalDr = 0;
   for (const r of outstandingData) {
     const b = parseFloat(r._balance);
     if (isNaN(b)) continue;
@@ -2653,11 +2656,13 @@ function renderOutstandingSummary() {
     const loc = r.location || 'Unknown';
     if (!groups[loc]) groups[loc] = { parties: [], crSum: 0, drSum: 0 };
     groups[loc].parties.push({ tallyName: r.tallyName, balance: b });
-    if (b > 0) groups[loc].crSum += b;
-    else groups[loc].drSum += b;
+    if (b > 0) { groups[loc].crSum += b; totalCr += b; }
+    else { groups[loc].drSum += b; totalDr += b; }
   }
   const locs = Object.keys(groups).sort();
   document.getElementById('outSummaryLocs').textContent = locs.length;
+  document.getElementById('outSumCr').textContent = totalCr.toLocaleString('en-IN', {minimumFractionDigits:2});
+  document.getElementById('outSumDr').textContent = Math.abs(totalDr).toLocaleString('en-IN', {minimumFractionDigits:2});
   if (!locs.length) {
     body.innerHTML = '<div style="text-align:center;color:#999;padding:24px">No data</div>';
     return;
