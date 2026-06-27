@@ -310,7 +310,7 @@
         </div>
         <div id="outstandingMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
-          <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>
+          <th>#</th><th>Location</th><th>Customer ID</th><th>Party Name</th><th>Balance</th><th style="width:120px">Actions</th>
         </tr></thead><tbody id="outstandingBody"></tbody></table></div>
       </div>
     </div>
@@ -2592,7 +2592,7 @@ async function loadOutstandingData() {
   locSel.value = curVal || '';
   const headRow = document.getElementById('outstandingHeaderRow');
   if (headRow && outstandingHeaders.length) {
-    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>';
+    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Party Name</th><th>Balance</th><th style="width:120px">Actions</th>';
   }
   renderOutstanding();
   renderOutstandingSummary();
@@ -2676,7 +2676,7 @@ function renderOutstandingSummary() {
         </span>
       </div>
       <div id="${sid}" style="display:none;padding:4px 12px 8px">
-        <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Telly Name</th><th style="text-align:right">Balance</th></tr></thead><tbody>`;
+        <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Party Name</th><th style="text-align:right">Balance</th></tr></thead><tbody>`;
     g.parties.forEach((p, pi) => {
       const balColor = p.balance > 0 ? '#16a34a' : '#dc2626';
       h += `<tr><td>${pi+1}</td><td>${p.tallyName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right;color:${balColor};font-weight:600">${p.balance.toLocaleString('en-IN',{minimumFractionDigits:2})}</td></tr>`;
@@ -2695,7 +2695,7 @@ async function addOutstandingRow() {
   if (location === null) return;
   const custId = prompt('Enter Customer ID:');
   if (custId === null) return;
-  const tallyName = prompt('Enter Telly Name:');
+  const tallyName = prompt('Enter Party Name:');
   if (tallyName === null) return;
   const res = await callScript('addOutstandingRow', { location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
   if (res?.success) {
@@ -2715,7 +2715,7 @@ async function editOutstandingRow(rowIndex) {
   if (location === null) return;
   const custId = prompt('Customer ID (current: ' + r.custId + '):', r.custId);
   if (custId === null) return;
-  const tallyName = prompt('Telly Name (current: ' + r.tallyName + '):', r.tallyName);
+  const tallyName = prompt('Party Name (current: ' + r.tallyName + '):', r.tallyName);
   if (tallyName === null) return;
   const res = await callScript('updateOutstandingRow', { rowIndex, location: location.trim(), custId: custId.trim(), tallyName: tallyName.trim() });
   if (res?.success) {
