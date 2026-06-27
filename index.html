@@ -278,22 +278,27 @@
   <div class="tab-pane" id="tab-outstanding">
     <div class="card">
       <h2>Outstanding</h2>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <select id="outstandingLocationFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
-          <option value="">All Locations</option>
-        </select>
-        <select id="outstandingBalanceFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
-          <option value="all">All</option>
-          <option value="positive">Positive Balance only</option>
-          <option value="negative">Negative Balance only</option>
-        </select>
-        <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
-        <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
+      <div style="display:flex;gap:4px;margin:10px 0" id="outstandingSubTabs">
+        <button class="gst-tab active" data-otab="all">All</button>
       </div>
-      <div id="outstandingMsg" class="msg"></div>
-      <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
-        <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>
-      </tr></thead><tbody id="outstandingBody"></tbody></table></div>
+      <div id="outstandingAllTab" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="outstandingLocationFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+            <option value="">All Locations</option>
+          </select>
+          <select id="outstandingBalanceFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+            <option value="all">All</option>
+            <option value="positive">Positive Balance only</option>
+            <option value="negative">Negative Balance only</option>
+          </select>
+          <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+          <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
+        </div>
+        <div id="outstandingMsg" class="msg"></div>
+        <div style="overflow-x:auto"><table><thead><tr id="outstandingHeaderRow">
+          <th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Balance</th><th style="width:120px">Actions</th>
+        </tr></thead><tbody id="outstandingBody"></tbody></table></div>
+      </div>
     </div>
   </div>
 
@@ -1554,6 +1559,15 @@ document.addEventListener('DOMContentLoaded', () => {
           const to = document.getElementById('simDateTo').value;
           loadSimSaved(from ? from+'T00:00:00' : '', to ? to+'T00:00:00' : '');
         }
+      });
+    });
+    document.querySelectorAll('#outstandingSubTabs .gst-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('#outstandingSubTabs .gst-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        const tab = t.dataset.otab;
+        document.getElementById('outstandingAllTab').style.display = tab === 'all' ? 'flex' : 'none';
+        if (tab === 'all') filterOutstanding();
       });
     });
     // Default: New tab (form visible)
