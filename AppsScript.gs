@@ -1213,8 +1213,8 @@ function fetchDeviceSheetData(data) {
     const filterStatus = (data?.status || '').toLowerCase();
 
     const result = [];
-    const from = filterDateFrom ? new Date(filterDateFrom + 'T00:00:00') : null;
-    const to = filterDateTo ? new Date(filterDateTo + 'T23:59:59') : null;
+    const from = filterDateFrom ? new Date(parseInt(filterDateFrom.slice(0,4)), parseInt(filterDateFrom.slice(5,7)) - 1, parseInt(filterDateFrom.slice(8,10))) : null;
+    const to = filterDateTo ? new Date(parseInt(filterDateTo.slice(0,4)), parseInt(filterDateTo.slice(5,7)) - 1, parseInt(filterDateTo.slice(8,10)) + 1) : null;
     for (let i = startRow; i < rows.length; i++) {
       const r = rows[i];
 
