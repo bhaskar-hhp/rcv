@@ -1106,7 +1106,7 @@ function saveDeviceOrderToSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheets().filter(s => s.getSheetId() === targetGid)[0];
   if (!sheet) return { success: false, error: 'Device sheet not found' };
-  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy');
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
   sheet.appendRow([
     today,
     data.orderId || '',
@@ -1490,7 +1490,7 @@ function saveSimOrderToSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheets().filter(s => s.getSheetId() === SIM_GID)[0];
   if (!sheet) return { success: false, error: 'SIM sheet not found' };
-  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MM-yyyy');
+  const today = Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy');
   sheet.appendRow([
     today,
     data.orderId || '',
