@@ -1222,6 +1222,13 @@ function fetchDeviceSheetData(data) {
       if (from && rowDate && rowDate < from) continue;
       if (to && rowDate && rowDate > to) continue;
 
+      let dateStr = '';
+      if (r[0] && typeof r[0] === 'object' && typeof r[0].getMonth === 'function') {
+        dateStr = Utilities.formatDate(r[0], 'IST', 'dd-MM-yyyy');
+      } else {
+        dateStr = String(r[0] || '');
+      }
+
       const partnerName = String(r[3] || '').toLowerCase();
       if (filterPartner && !partnerName.includes(filterPartner)) continue;
       const rowLocation = String(r[10] || '').toLowerCase();
@@ -1230,7 +1237,7 @@ function fetchDeviceSheetData(data) {
       if (filterStatus && rowStatus !== filterStatus) continue;
 
       result.push({
-        date: String(r[0] || ''),
+        date: dateStr,
         orderId: String(r[1] || ''),
         partnerNum: String(r[2] || ''),
         partnerName: String(r[3] || ''),
