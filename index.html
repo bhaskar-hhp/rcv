@@ -2446,7 +2446,7 @@ async function loadDeviceSheetData() {
             '<td style="font-size:.7rem">' + r.qty + '</td>' +
             '<td style="font-size:.7rem">' + r.dealerPrice + '</td>' +
              '<td style="font-size:.7rem">' + r.totalAmount + '</td>' +
-             '<td style="font-size:.7rem;padding:2px 6px;border-radius:4px;font-weight:600;' + (r.status === 'Completely Dispatched' ? 'background:#16a34a;color:#fff' : r.status === 'Pending For Invoice and Dispatch' ? 'background:#dc2626;color:#fff' : '') + '">' + r.status + '</td></tr>';
+             '<td style="font-size:.7rem"><span class="badge ' + (r.status === 'Completely Dispatched' ? 'badge-success' : r.status === 'Pending For Invoice and Dispatch' ? 'badge-error' : '') + '">' + r.status + '</span></td></tr>';
         }
         tbody.innerHTML = html;
       }
