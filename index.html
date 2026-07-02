@@ -824,7 +824,7 @@ function onNewRetailerChange(id, sel) {
   if (sel.value === 'add_fund') { row.custNum = '660002825'; }
   else { row.custNum = sel.value; }
   row.retailerVal = sel.value;
-  if (row.basic) row.amount = (parseFloat(row.basic) * getMult(sel.value === 'add_fund')).toFixed(2);
+  if (row.basic) row.amount = Math.round(parseFloat(row.basic) * getMult(sel.value === 'add_fund')).toString();
   renderNewRows();
 }
 
@@ -833,7 +833,7 @@ function updateNewRowVal(id, field, value) {
   if (!row) return;
   row[field] = value;
   if (field === 'basic') {
-    row.amount = value ? (parseFloat(value) * getMult(row.retailerVal === 'add_fund')).toFixed(2) : '';
+    row.amount = value ? Math.round(parseFloat(value) * getMult(row.retailerVal === 'add_fund')).toString() : '';
   }
   renderNewRows();
 }
