@@ -257,6 +257,10 @@
         <span style="font-size:.75rem;color:#64748b">To:</span>
         <input type="date" id="statusDateTo" style="font-size:.8rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
         <button class="btn-sm btn-outline" onclick="loadStatusRange()" style="color:#6366f1;border-color:#6366f1">Filter</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;color:#64748b;cursor:pointer;margin-left:8px">
+          <input type="checkbox" id="statusMonthToggle" onchange="toggleStatusView()" style="width:16px;height:16px;accent-color:#6366f1">
+          Month-wise
+        </label>
       </div>
       <div id="statusContent" style="display:flex;gap:24px;flex-wrap:wrap"></div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px">
@@ -2886,6 +2890,109 @@ function loadStatusRange() {
     }
 
     el.innerHTML = rcvCard + devCard;
+  });
+}
+
+function toggleStatusView() {
+  const on = document.getElementById('statusMonthToggle').checked;
+  if (on) {
+    document.getElementById('statusDateFrom').disabled = true;
+    document.getElementById('statusDateTo').disabled = true;
+    loadStatusMonthWise();
+  } else {
+    document.getElementById('statusDateFrom').disabled = false;
+    document.getElementById('statusDateTo').disabled = false;
+    loadStatusRange();
+  }
+}
+
+function loadStatusMonthWise() {
+  const el = document.getElementById('statusContent');
+  const rcvSummary = document.getElementById('rcvPeriodSummary');
+  const rcvDetail = document.getElementById('rcvPeriodDetail');
+  const devSummary = document.getElementById('devicePeriodSummary');
+  const devDetail = document.getElementById('devicePeriodDetail');
+  el.innerHTML = '<p style="color:#999">Loading...</p>';
+  rcvSummary.textContent = 'Loading...';
+  devSummary.textContent = 'Loading...';
+  rcvDetail.innerHTML = '';
+  devDetail.innerHTML = '';
+
+  callScript('getMonthWiseData').then(res => {
+    if (res?.success && res.data) {
+      const fmt = n => '₹ ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      const months = res.data;
+
+      let rcvTotalBasic = 0, rcvTotalOrders = 0, rcvTotalParties = 0;
+      let devTotalQty = 0, devTotalOrders = 0, devTotalParties = 0;
+      const monthSet = new Set();
+
+      let rcvRows = '', devRows = '';
+      months.forEach((m, i) => {
+        monthSet.add(m.month);
+        rcvTotalBasic += m.rcvBasic || 0;
+        rcvTotalOrders += m.rcvOrders || 0;
+        rcvTotalParties += m.rcvParties || 0;
+        devTotalQty += m.devQty || 0;
+        devTotalOrders += m.devOrders || 0;
+        devTotalParties += m.devParties || 0;
+
+        const mid = 'mw' + i;
+        rcvRows += `<div style="margin-bottom:4px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+          <div onclick="toggleCollapse('${mid}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e2e8f0;cursor:pointer;font-size:.75rem;font-weight:600">
+            <span>${m.month}</span>
+            <span style="font-weight:400">Basic: ${fmt(m.rcvBasic)} | Orders: ${m.rcvOrders} | Parties: ${m.rcvParties} <span id="${mid}Icon" style="margin-left:6px">▸</span></span>
+          </div>
+          <div id="${mid}" style="display:none;padding:4px 8px">
+            <table style="font-size:.7rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Basic</th><th style="text-align:center">Orders</th></tr></thead><tbody>`;
+        (m.rcvPartiesList || []).forEach((p, pi) => {
+          rcvRows += `<tr><td>${pi+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${fmt(p.basic)}</td><td style="text-align:center">${p.count}</td></tr>`;
+        });
+        rcvRows += `</tbody></table></div></div>`;
+
+        const did = 'mwDev' + i;
+        devRows += `<div style="margin-bottom:4px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+          <div onclick="toggleCollapse('${did}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e2e8f0;cursor:pointer;font-size:.75rem;font-weight:600">
+            <span>${m.month}</span>
+            <span style="font-weight:400">Qty: ${m.devQty} | Orders: ${m.devOrders} | Parties: ${m.devParties} <span id="${did}Icon" style="margin-left:6px">▸</span></span>
+          </div>
+          <div id="${did}" style="display:none;padding:4px 8px">
+            <table style="font-size:.7rem;width:100%"><thead><tr><th>#</th><th>Partner</th><th style="text-align:right">Qty</th><th style="text-align:center">Orders</th></tr></thead><tbody>`;
+        (m.devPartiesList || []).forEach((p, pi) => {
+          devRows += `<tr><td>${pi+1}</td><td>${p.partner.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right">${p.qty}</td><td style="text-align:center">${p.count}</td></tr>`;
+        });
+        devRows += `</tbody></table></div></div>`;
+      });
+
+      const statusCard = (title, icon, bgColor, borderColor, fields) => {
+        let body = fields.map(f => `<div><span style="font-size:1.5rem;font-weight:700${f.color ? ';color:' + f.color : ''}">${f.val}</span><br><span style="font-size:.75rem;color:#64748b">${f.label}</span></div>`).join('');
+        return `<div style="flex:1;min-width:280px;background:${bgColor};border:1px solid ${borderColor};border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span style="font-size:1.4rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)">${icon}</span>
+            <h3 style="margin:0;font-size:.95rem;color:#1e293b">${title}</h3>
+          </div>
+          <div style="display:flex;gap:20px">${body}</div>
+        </div>`;
+      };
+
+      el.innerHTML =
+        statusCard('RCV Orders', '📋', 'linear-gradient(135deg,#eff6ff,#dbeafe)', '#bfdbfe', [
+          { val: fmt(rcvTotalBasic), label: 'Basic', color: '#6366f1' },
+          { val: rcvTotalOrders, label: 'Orders' },
+          { val: rcvTotalParties, label: 'Parties' },
+        ]) +
+        statusCard('Device Orders', '📱', 'linear-gradient(135deg,#f5f3ff,#e2d9f3)', '#c4b5fd', [
+          { val: devTotalQty, label: 'Qty' },
+          { val: devTotalOrders, label: 'Orders' },
+          { val: devTotalParties, label: 'Parties' },
+        ]);
+      rcvSummary.textContent = `Basic: ${fmt(rcvTotalBasic)} | Orders: ${rcvTotalOrders} | Parties: ${rcvTotalParties}`;
+      devSummary.textContent = `Qty: ${devTotalQty} | Orders: ${devTotalOrders} | Parties: ${devTotalParties}`;
+      rcvDetail.innerHTML = '<h4 style="font-size:.8rem;margin:0 0 6px 0;color:#475569">Month-wise RCV</h4>' + rcvRows;
+      devDetail.innerHTML = '<h4 style="font-size:.8rem;margin:0 0 6px 0;color:#475569">Month-wise Device</h4>' + devRows;
+    } else {
+      el.innerHTML = '<p style="color:#dc2626">Failed to load month-wise data</p>';
+    }
   });
 }
 

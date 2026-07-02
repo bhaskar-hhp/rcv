@@ -317,6 +317,9 @@ function doPost(e) {
       case 'getDeviceRangeData':
         result = getDeviceRangeData(data.fromDate, data.toDate);
         break;
+      case 'getMonthWiseData':
+        result = getMonthWiseData();
+        break;
       case 'getModelData':
         result = getModelData();
         break;
@@ -1635,4 +1638,109 @@ function updateSimOrderStatus(orderId, newStatus) {
     }
   }
   return { success: false, error: 'Order not found: ' + orderId };
+}
+
+function getMonthWiseData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const months = {};
+
+  const gst = ss.getSheetByName('gst_calc');
+  if (gst) {
+    const rows = gst.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const rawDate = rows[i][0];
+      if (!rawDate) continue;
+      let d;
+      if (typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+        d = new Date(rawDate.getFullYear(), rawDate.getMonth(), 1);
+      } else {
+        const s = String(rawDate || '').trim();
+        const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+        if (parts) d = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, 1);
+        if (!d) {
+          const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+          if (mmm) {
+            const monthNames = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+            const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()];
+            if (mon !== undefined) d = new Date(parseInt(mmm[3]), mon, 1);
+          }
+        }
+      }
+      if (!d) continue;
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      if (!months[key]) months[key] = { month: key, rcvBasic: 0, rcvAmount: 0, rcvOrders: 0, rcvParties: 0, rcvPartiesList: {}, devQty: 0, devOrders: 0, devParties: 0, devPartiesList: {} };
+      const partner = String(rows[i][2] || '').trim();
+      if (partner.toUpperCase() === 'SELF') continue;
+      const basic = parseFloat(String(rows[i][4] || '0').replace(/,/g, '')) || 0;
+      const amount = parseFloat(String(rows[i][5] || '0').replace(/,/g, '')) || 0;
+      months[key].rcvBasic += basic;
+      months[key].rcvAmount += amount;
+      months[key].rcvOrders++;
+      if (partner) {
+        if (!months[key].rcvPartiesList[partner]) months[key].rcvPartiesList[partner] = { partner, basic: 0, amount: 0, count: 0 };
+        months[key].rcvPartiesList[partner].basic += basic;
+        months[key].rcvPartiesList[partner].amount += amount;
+        months[key].rcvPartiesList[partner].count++;
+      }
+    }
+  }
+
+  const deviceGid = 320908957;
+  let devSheet = ss.getSheets().filter(s => s.getSheetId() === deviceGid)[0];
+  if (devSheet) {
+    const rows = devSheet.getDataRange().getValues();
+    const startRow = String(rows[0][0]).toLowerCase().includes('date') ? 1 : 0;
+    for (let i = startRow; i < rows.length; i++) {
+      const rawDate = rows[i][0];
+      if (!rawDate) continue;
+      let d;
+      if (typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+        d = new Date(rawDate.getFullYear(), rawDate.getMonth(), 1);
+      } else {
+        const s = String(rawDate || '').trim();
+        const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+        if (parts) d = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, 1);
+        if (!d) {
+          const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+          if (mmm) {
+            const monthNames = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+            const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()];
+            if (mon !== undefined) d = new Date(parseInt(mmm[3]), mon, 1);
+          }
+        }
+      }
+      if (!d) continue;
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      if (!months[key]) months[key] = { month: key, rcvBasic: 0, rcvAmount: 0, rcvOrders: 0, rcvParties: 0, rcvPartiesList: {}, devQty: 0, devOrders: 0, devParties: 0, devPartiesList: {} };
+      const status = String(rows[i][9] || '').trim();
+      if (status !== 'Completely Dispatched') continue;
+      const partner = String(rows[i][3] || '').trim();
+      const qty = parseInt(String(rows[i][6] || '0')) || 0;
+      months[key].devQty += qty;
+      months[key].devOrders++;
+      if (partner) {
+        if (!months[key].devPartiesList[partner]) months[key].devPartiesList[partner] = { partner, qty: 0, count: 0 };
+        months[key].devPartiesList[partner].qty += qty;
+        months[key].devPartiesList[partner].count++;
+      }
+    }
+  }
+
+  const result = Object.keys(months).sort().map(key => {
+    const m = months[key];
+    return {
+      month: key,
+      rcvBasic: m.rcvBasic,
+      rcvAmount: m.rcvAmount,
+      rcvOrders: m.rcvOrders,
+      rcvParties: Object.keys(m.rcvPartiesList).length,
+      rcvPartiesList: Object.values(m.rcvPartiesList).sort((a, b) => b.basic - a.basic),
+      devQty: m.devQty,
+      devOrders: m.devOrders,
+      devParties: Object.keys(m.devPartiesList).length,
+      devPartiesList: Object.values(m.devPartiesList).sort((a, b) => b.qty - a.qty),
+    };
+  });
+
+  return { success: true, data: result };
 }
