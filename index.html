@@ -239,11 +239,15 @@
     <div class="card">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <h2 style="margin:0;font-size:1rem">Collection</h2>
-        <input type="text" id="collectionFilter" placeholder="Filter by name..." oninput="filterCollection()" style="padding:4px 8px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:6px;flex:1;max-width:250px">
+        <input type="date" id="collectionFrom" onchange="filterCollection()" style="padding:4px 8px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:6px">
+        <span style="font-size:.75rem;color:#64748b">to</span>
+        <input type="date" id="collectionTo" onchange="filterCollection()" style="padding:4px 8px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:6px">
+        <input type="text" id="collectionFilter" placeholder="Filter by name..." oninput="filterCollection()" style="padding:4px 8px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:6px;flex:1;max-width:200px">
         <span style="font-size:.75rem;color:#64748b"><span id="collectionCount">0</span> entries</span>
+        <span style="font-size:.9rem;font-weight:700;margin-left:auto">Total: <span id="collectionTotal" style="color:#16a34a">₹ 0.00</span></span>
       </div>
       <div style="overflow-x:auto"><table><thead><tr>
-        <th>Date</th><th>Partner Name</th><th style="text-align:right">Amount</th>
+        <th>Date</th><th>Partner Name</th><th style="text-align:right">Outstanding</th><th style="text-align:right">Amount</th>
       </tr></thead><tbody id="collectionBody"></tbody></table></div>
     </div>
   </div>
@@ -2628,32 +2632,62 @@ let collectionData = [];
 
 async function loadCollectionData() {
   const body = document.getElementById('collectionBody');
-  body.innerHTML = '<tr><td colspan="3" style="color:#999">Loading...</td></tr>';
-  const res = await callScript('getCollectionData');
+  body.innerHTML = '<tr><td colspan="4" style="color:#999">Loading...</td></tr>';
+  const today = localDateStr(new Date());
+  document.getElementById('collectionFrom').value = today;
+  document.getElementById('collectionTo').value = today;
+  const [res, tallyRes] = await Promise.all([
+    callScript('getCollectionData'),
+    callScript('getTallyData')
+  ]);
   if (!res?.success) {
-    body.innerHTML = '<tr><td colspan="3" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
     return;
   }
   collectionData = res.data || [];
+  const tallyMap = tallyRes?.data || {};
+  collectionData.forEach(r => {
+    r._balance = lookupTallyBalance(r.partner, tallyMap);
+  });
   renderCollectionTable();
 }
 
 function renderCollectionTable() {
   const filter = (document.getElementById('collectionFilter')?.value || '').toLowerCase().trim();
+  const fromVal = document.getElementById('collectionFrom')?.value || '';
+  const toVal = document.getElementById('collectionTo')?.value || '';
   let rows = collectionData;
   if (filter) rows = rows.filter(r => r.partner.toLowerCase().includes(filter));
+  if (fromVal || toVal) {
+    const fromTs = fromVal ? new Date(fromVal + 'T00:00:00').getTime() : 0;
+    const toTs = toVal ? new Date(toVal + 'T23:59:59').getTime() : Infinity;
+    const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+    rows = rows.filter(r => {
+      const m = r.date.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+      if (!m) return true;
+      const ts = new Date(parseInt(m[3]), MONTHS[m[2].charAt(0).toUpperCase()+m[2].slice(1).toLowerCase()], parseInt(m[1])).getTime();
+      return ts >= fromTs && ts <= toTs;
+    });
+  }
   document.getElementById('collectionCount').textContent = rows.length;
+  const total = rows.reduce((s, r) => s + r.amount, 0);
+  document.getElementById('collectionTotal').textContent = '₹ ' + total.toLocaleString('en-IN', {minimumFractionDigits:2});
   const body = document.getElementById('collectionBody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="3" style="color:#999">No data</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" style="color:#999">No data</td></tr>';
     return;
   }
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let h = '';
   for (const r of rows) {
+    const bal = parseFloat(r._balance);
+    const hasBal = r._balance && String(r._balance).trim() !== '';
+    const balColor = hasBal ? (bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b') : '#64748b';
+    const balDisplay = hasBal ? bal.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
     h += `<tr>
       <td>${e(r.date)}</td>
       <td>${e(r.partner)}</td>
+      <td style="text-align:right;font-weight:600;color:${balColor}">${balDisplay}</td>
       <td style="text-align:right;font-weight:600;color:#16a34a">₹ ${r.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
     </tr>`;
   }
