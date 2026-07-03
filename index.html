@@ -1066,15 +1066,22 @@ async function renderPartnerBalance(wrap) {
     return;
   }
   const rows = result.data || [];
+  // Fetch Jio wallet balances for all customer numbers
+  const nums = [...new Set(rows.map(r => r.b).filter(Boolean))];
+  const walRes = nums.length ? await callScript('getJioWalletBalances', { customerNums: JSON.stringify(nums) }) : null;
+  const walMap = walRes?.success ? (walRes.balances || {}) : {};
   let html = '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center"><button class="btn-primary" onclick="addRdsRow()">+ Add Row</button>';
   html += '<button class="btn-sm btn-outline" onclick="batchPushSubmitPartner()" style="color:#dc2626;border-color:#dc2626">Push &amp; Submit Selected</button>';
   html += '<span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="partnerSelCount">0</span> selected</span></div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr><th style="width:32px"><input type="checkbox" onchange="toggleAllPartner(this.checked)"></th><th>Patnar</th><th>ID</th><th>Balance</th><th style="width:60px">Action</th></tr></thead><tbody>';
+  html += '<div style="overflow-x:auto"><table><thead><tr><th style="width:32px"><input type="checkbox" onchange="toggleAllPartner(this.checked)"></th><th>Patnar</th><th>Jio Walet Bal</th><th>ID</th><th>Balance</th><th style="width:60px">Action</th></tr></thead><tbody>';
   if (!rows.length) {
-    html += '<tr><td colspan="5" style="text-align:center;color:#999">No rows</td></tr>';
+    html += '<tr><td colspan="6" style="text-align:center;color:#999">No rows</td></tr>';
   } else {
     for (const r of rows) {
-      html += `<tr><td style="text-align:center"><input type="checkbox" class="partner-cb" data-rowidx="${r.rowIndex}" data-name="${r.a.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" data-num="${r.b}" data-bal="${r.c}" onchange="updatePartnerSelCount()"></td><td>${r.a}</td><td>${r.b}</td><td>${r.c}</td><td><button class="btn-sm btn-outline" onclick="deleteRdsRow(${r.rowIndex})" style="color:#dc2626;border-color:#dc2626">Delete</button></td></tr>`;
+      const wb = walMap[r.b];
+      const wbDisplay = wb !== undefined ? '₹ ' + wb.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
+      const wbColor = wb !== undefined ? (wb > 0 ? '#16a34a' : wb < 0 ? '#ef4444' : '#64748b') : '#64748b';
+      html += `<tr><td style="text-align:center"><input type="checkbox" class="partner-cb" data-rowidx="${r.rowIndex}" data-name="${r.a.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" data-num="${r.b}" data-bal="${r.c}" onchange="updatePartnerSelCount()"></td><td>${r.a}</td><td style="font-weight:600;color:${wbColor}">${wbDisplay}</td><td>${r.b}</td><td>${r.c}</td><td><button class="btn-sm btn-outline" onclick="deleteRdsRow(${r.rowIndex})" style="color:#dc2626;border-color:#dc2626">Delete</button></td></tr>`;
     }
   }
   html += '</tbody></table></div>';

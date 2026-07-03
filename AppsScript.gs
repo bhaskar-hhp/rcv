@@ -201,6 +201,9 @@ function doPost(e) {
       case 'getJioBalance':
         result = getJioBalance();
         break;
+      case 'getJioWalletBalances':
+        result = getJioWalletBalances(data.customerNums);
+        break;
       case 'getCustomerCredit':
         result = getCustomerCredit();
         break;
@@ -497,6 +500,34 @@ function getJioBalance() {
     return { success: true, jioBalance: parseFloat(amt), avlCreditLimit: String(credit) };
   }
   return { success: false, error: 'HTTP ' + result.status };
+}
+
+function getJioWalletBalances(customerNumsJson) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  let nums;
+  try { nums = JSON.parse(customerNumsJson); } catch (e) { nums = []; }
+  if (!Array.isArray(nums) || !nums.length) return { success: true, balances: {} };
+  const unique = [...new Set(nums.map(String).filter(Boolean))];
+  const balances = {};
+  for (const num of unique) {
+    try {
+      const path = "/api/dsm-orders/details-of-balance?userType=ZD&customerNumber='" + num + "'";
+      const result = jioApi('GET', path, null, fullName, userId);
+      if (result.status === 200) {
+        const arr = Array.isArray(result.data) ? result.data : (result.data?.d?.results || []);
+        const amt = arr[0]?.AvailableAmt || arr[0]?.availableAmt || '0';
+        balances[num] = parseFloat(amt);
+      }
+    } catch (e) {
+      // skip failed lookups
+    }
+  }
+  return { success: true, balances };
 }
 
 function getCustomerCredit() {
