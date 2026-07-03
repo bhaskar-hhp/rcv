@@ -309,6 +309,12 @@
             <option value="positive">Positive Balance only</option>
             <option value="negative">Negative Balance only</option>
           </select>
+          <select id="outstandingAgingFilter" onchange="filterOutstanding()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+            <option value="all">All Aging</option>
+            <option value="1-15">1-15d only</option>
+            <option value="16-30">16-30d only</option>
+            <option value=">30">&gt;30d only</option>
+          </select>
           <button class="btn-sm btn-outline" onclick="addOutstandingRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
           <span style="font-size:.75rem;color:#64748b"><span id="outstandingCount">0</span> rows</span>
           <span style="font-size:.75rem;color:#16a34a;font-weight:600">Cr. <span id="outstandingCr">0</span></span>
@@ -2573,20 +2579,22 @@ async function deleteModelRow(rowIndex) {
 // ── Outstanding ──────────────────────────────────────────────────────
 let outstandingData = [];
 let outstandingHeaders = [];
+let outstandingTxByPartner = {};
 
 async function loadOutstandingData() {
   const body = document.getElementById('outstandingBody');
-  body.innerHTML = '<tr><td colspan="7" style="color:#999">Loading...</td></tr>';
+  body.innerHTML = '<tr><td colspan="9" style="color:#999">Loading...</td></tr>';
   const [outRes, tallyRes] = await Promise.all([
     callScript('getOutstandingData'),
     callScript('getTallyData')
   ]);
   if (!outRes?.success) {
-    body.innerHTML = '<tr><td colspan="7" style="color:#dc2626">' + (outRes?.error || 'Failed') + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="color:#dc2626">' + (outRes?.error || 'Failed') + '</td></tr>';
     return;
   }
   outstandingData = outRes.data || [];
   outstandingHeaders = outRes.headers || [];
+  outstandingTxByPartner = outRes.txByPartner || {};
   const tallyMap = tallyRes?.data || {};
   outstandingData.forEach(r => {
     r._balance = lookupTallyBalance(r.tallyName, tallyMap);
@@ -2598,32 +2606,50 @@ async function loadOutstandingData() {
   locSel.value = curVal || '';
   const headRow = document.getElementById('outstandingHeaderRow');
   if (headRow && outstandingHeaders.length) {
-    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Aging</th><th>Balance</th><th style="width:120px">Actions</th>';
+    headRow.innerHTML = '<th>#</th><th>Location</th><th>Customer ID</th><th>Telly Name</th><th>Aging:1-15</th><th>Aging:16-30</th><th>Aging:>30</th><th>Balance</th><th style="width:120px">Actions</th>';
   }
   renderOutstanding();
   renderOutstandingSummary();
 }
 
-function calcAging(dateStr, balance) {
-  if (!dateStr || !balance || parseFloat(balance) === 0) return { label: '—', color: '#64748b' };
-  const MONTHS = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
-  const m = dateStr.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
-  if (!m) return { label: '—', color: '#64748b' };
-  const d = new Date(parseInt(m[3]), MONTHS[m[2].charAt(0).toUpperCase()+m[2].slice(1).toLowerCase()], parseInt(m[1]));
-  const diff = Math.floor((new Date() - d) / (1000*60*60*24));
-  if (diff <= 0) return { label: '—', color: '#64748b' };
-  if (diff <= 15) return { label: '1-15d', color: '#16a34a' };
-  if (diff <= 30) return { label: '16-30d', color: '#ea580c' };
-  return { label: '>30d', color: '#dc2626' };
+function calcAgingBuckets(tallyName, balance) {
+  const bal = parseFloat(balance);
+  if (!tallyName || isNaN(bal) || bal >= 0) return { d1_15: null, d16_30: null, d30plus: null };
+  const txns = outstandingTxByPartner[tallyName.trim().toLowerCase()];
+  if (!txns || !txns.length) return { d1_15: null, d16_30: null, d30plus: Math.abs(bal) };
+  const sorted = txns.slice().sort((a, b) => b.date - a.date);
+  let remaining = Math.abs(bal);
+  let d1_15 = 0, d16_30 = 0, d30plus = 0;
+  for (const tx of sorted) {
+    if (remaining <= 0) break;
+    const daysOld = Math.floor((Date.now() - tx.date) / (1000 * 60 * 60 * 24));
+    const amt = Math.min(Math.abs(tx.amount), remaining);
+    if (daysOld <= 15) d1_15 += amt;
+    else if (daysOld <= 30) d16_30 += amt;
+    else d30plus += amt;
+    remaining -= amt;
+  }
+  if (remaining > 0) d30plus += remaining;
+  return { d1_15, d16_30, d30plus };
 }
 
 function renderOutstanding() {
   const locFilter = document.getElementById('outstandingLocationFilter')?.value || '';
   const balFilter = document.getElementById('outstandingBalanceFilter')?.value || 'all';
+  const ageFilter = document.getElementById('outstandingAgingFilter')?.value || 'all';
   let rows = outstandingData;
   if (locFilter) rows = rows.filter(r => r.location === locFilter);
   if (balFilter === 'positive') rows = rows.filter(r => parseFloat(r._balance) > 0);
   if (balFilter === 'negative') rows = rows.filter(r => parseFloat(r._balance) < 0);
+  if (ageFilter !== 'all') {
+    rows = rows.filter(r => {
+      const ag = calcAgingBuckets(r.tallyName, r._balance);
+      if (ageFilter === '1-15') return ag.d1_15 !== null && ag.d1_15 > 0;
+      if (ageFilter === '16-30') return ag.d16_30 !== null && ag.d16_30 > 0;
+      if (ageFilter === '>30') return ag.d30plus !== null && ag.d30plus > 0;
+      return true;
+    });
+  }
   const body = document.getElementById('outstandingBody');
   document.getElementById('outstandingCount').textContent = rows.length;
   let crSum = 0, drSum = 0;
@@ -2635,7 +2661,7 @@ function renderOutstanding() {
   document.getElementById('outstandingCr').textContent = crSum.toLocaleString('en-IN', {minimumFractionDigits:2});
   document.getElementById('outstandingDr').textContent = Math.abs(drSum).toLocaleString('en-IN', {minimumFractionDigits:2});
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="7" style="color:#999">No data</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="color:#999">No data</td></tr>';
     return;
   }
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -2645,14 +2671,19 @@ function renderOutstanding() {
     const hasBal = r._balance && String(r._balance).trim() !== '';
     const balColor = hasBal ? (bal > 0 ? '#16a34a' : bal < 0 ? '#ef4444' : '#64748b') : '#64748b';
     const balDisplay = hasBal ? bal.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
-    h += `<tr>
-      <td>${r.rowIndex}</td>
-      <td><strong>${e(r.location)}</strong></td>
-      <td>${e(r.custId)}</td>
-      <td>${e(r.tallyName)}</td>
-      <td style="font-size:.75rem;font-weight:600;color:${calcAging(r.date, r._balance).color}">${calcAging(r.date, r._balance).label}</td>
-      <td style="color:${balColor};font-weight:600">${balDisplay}</td>
-      <td style="white-space:nowrap">
+    const ag = calcAgingBuckets(r.tallyName, r._balance);
+    const fmt = v => v !== null ? v.toLocaleString('en-IN', {minimumFractionDigits:2}) : '—';
+    const agColor = (v, col) => v !== null && v > 0 ? col : '#d1d5db';
+    h += `<tr style="background:${bal < 0 ? '#fef2f2' : '#f0fdf4'}">
+      <td style="padding:6px 8px">${r.rowIndex}</td>
+      <td style="padding:6px 8px"><strong>${e(r.location)}</strong></td>
+      <td style="padding:6px 8px">${e(r.custId)}</td>
+      <td style="padding:6px 8px">${e(r.tallyName)}</td>
+      <td style="background:${ag.d1_15 !== null && ag.d1_15 > 0 ? '#dcfce7' : '#f9fafb'};font-weight:600;color:${agColor(ag.d1_15, '#16a34a')};padding:6px 8px">${fmt(ag.d1_15)}</td>
+      <td style="background:${ag.d16_30 !== null && ag.d16_30 > 0 ? '#fef3c7' : '#f9fafb'};font-weight:600;color:${agColor(ag.d16_30, '#ea580c')};padding:6px 8px">${fmt(ag.d16_30)}</td>
+      <td style="background:${ag.d30plus !== null && ag.d30plus > 0 ? '#fee2e2' : '#f9fafb'};font-weight:600;color:${agColor(ag.d30plus, '#dc2626')};padding:6px 8px">${fmt(ag.d30plus)}</td>
+      <td style="color:${balColor};font-weight:600;padding:6px 8px">${balDisplay}</td>
+      <td style="white-space:nowrap;padding:6px 8px">
         <button class="btn-sm btn-outline" onclick="editOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
         <button class="btn-sm btn-outline" onclick="deleteOutstandingRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
       </td>

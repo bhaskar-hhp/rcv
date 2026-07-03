@@ -1373,6 +1373,45 @@ function getOutstandingData() {
   if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
   const rows = sheet.getDataRange().getValues();
   const headers = rows.length > 0 ? rows[0].map(h => String(h || '')) : [];
+
+  // Load transaction data from external sheet for aging calculation
+  const txByPartner = {};
+  try {
+    const extSs = SpreadsheetApp.openById('1MA22j4cqeYwFcN0PjY1GAFcN8VOyy3PUVL3x2Dn8L3Q');
+    const extSheet = extSs.getSheets().filter(s => s.getSheetId() === 820761094)[0];
+    if (extSheet) {
+      const extRows = extSheet.getDataRange().getValues();
+      for (let i = 1; i < extRows.length; i++) {
+        const r = extRows[i];
+        const dateRaw = r[0];
+        const name = String(r[3] || '').trim().toLowerCase();
+        const amt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
+        if (!name || !amt || !dateRaw) continue;
+        let dateObj;
+        if (typeof dateRaw === 'object' && typeof dateRaw.getMonth === 'function') {
+          dateObj = new Date(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate());
+        } else {
+          const s = String(dateRaw || '').trim();
+          const mmm = s.match(/(\d{1,2})[-\/. ]([A-Za-z]{3})[-\/. ](\d{4})/);
+          if (mmm) {
+            const monthNames = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+            const mon = monthNames[mmm[2].charAt(0).toUpperCase() + mmm[2].slice(1).toLowerCase()];
+            if (mon !== undefined) dateObj = new Date(parseInt(mmm[3]), mon, parseInt(mmm[1]));
+          }
+          if (!dateObj) {
+            const parts = s.match(/(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/);
+            if (parts) dateObj = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+          }
+        }
+        if (!dateObj) continue;
+        if (!txByPartner[name]) txByPartner[name] = [];
+        txByPartner[name].push({ date: dateObj.getTime(), amount: amt });
+      }
+    }
+  } catch (e) {
+    // External sheet not accessible
+  }
+
   const result = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -1383,9 +1422,15 @@ function getOutstandingData() {
     } else {
       dateStr = String(rawDate || '').trim();
     }
-    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || ''), date: dateStr });
+    result.push({
+      rowIndex: i + 1,
+      custId: String(r[0] || ''),
+      tallyName: String(r[1] || '').trim(),
+      location: String(r[2] || ''),
+      date: dateStr,
+    });
   }
-  return { success: true, data: result, headers, total: result.length };
+  return { success: true, data: result, headers, txByPartner, total: result.length };
 }
 
 function addOutstandingRowToSheet(data) {
