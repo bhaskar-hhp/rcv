@@ -338,6 +338,9 @@ function doPost(e) {
       case 'getOutstandingData':
         result = getOutstandingData();
         break;
+      case 'getCollectionData':
+        result = getCollectionData();
+        break;
       case 'addOutstandingRow':
         result = addOutstandingRowToSheet(data);
         break;
@@ -1394,7 +1397,50 @@ function updateModelRowInSheet(data) {
   return { success: true };
 }
 
-// ── Outstanding (gid=226040199) ──────────────────────────────────────
+// ── Collection ─────────────────────────────────────────────────────────
+
+function getCollectionData() {
+  try {
+    const extSs = SpreadsheetApp.openById('1MA22j4cqeYwFcN0PjY1GAFcN8VOyy3PUVL3x2Dn8L3Q');
+    const extSheet = extSs.getSheets().filter(s => s.getSheetId() === 820761094)[0];
+    if (!extSheet) return { success: false, error: 'External sheet not found' };
+
+    // Build set of valid Tally names from Outstanding sheet (gid=226040199, column B)
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const outSheet = ss.getSheets().filter(s => s.getSheetId() === 226040199)[0];
+    const validNames = new Set();
+    if (outSheet) {
+      const outRows = outSheet.getDataRange().getValues();
+      for (let i = 1; i < outRows.length; i++) {
+        const name = String(outRows[i][1] || '').trim().toLowerCase();
+        if (name) validNames.add(name);
+      }
+    }
+
+    const extRows = extSheet.getDataRange().getValues();
+    const data = [];
+    for (let i = 1; i < extRows.length; i++) {
+      const r = extRows[i];
+      const rawDate = r[0];
+      const partner = String(r[3] || '').trim();   // Column D = Partner Name
+      const rawAmt = r[5];                          // Column F = Amount
+      if (!partner || !rawDate) continue;
+      if (!validNames.has(partner.toLowerCase())) continue;
+
+      let dateStr = '';
+      if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+        dateStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
+      } else {
+        dateStr = String(rawDate || '').trim();
+      }
+      const amt = parseFloat(String(rawAmt || '0').replace(/,/g, '')) || 0;
+      data.push({ date: dateStr, partner, amount: amt });
+    }
+    return { success: true, data, total: data.length };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
 
 const OUTSTANDING_GID = 226040199;
 
