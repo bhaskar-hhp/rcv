@@ -1376,7 +1376,14 @@ function getOutstandingData() {
   const result = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || '') });
+    const rawDate = r[3];
+    let dateStr = '';
+    if (rawDate && typeof rawDate === 'object' && typeof rawDate.getMonth === 'function') {
+      dateStr = Utilities.formatDate(rawDate, 'IST', 'dd-MMM-yyyy');
+    } else {
+      dateStr = String(rawDate || '').trim();
+    }
+    result.push({ rowIndex: i + 1, custId: String(r[0] || ''), tallyName: String(r[1] || ''), location: String(r[2] || ''), date: dateStr });
   }
   return { success: true, data: result, headers, total: result.length };
 }
@@ -1385,7 +1392,7 @@ function addOutstandingRowToSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheets().filter(s => s.getSheetId() === OUTSTANDING_GID)[0];
   if (!sheet) return { success: false, error: 'Outstanding sheet not found' };
-  sheet.appendRow([data.custId || '', data.tallyName || '', data.location || '']);
+  sheet.appendRow([data.custId || '', data.tallyName || '', data.location || '', Utilities.formatDate(new Date(), 'IST', 'dd-MMM-yyyy')]);
   return { success: true };
 }
 
