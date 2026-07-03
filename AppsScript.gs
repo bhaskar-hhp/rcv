@@ -1422,9 +1422,11 @@ function getCollectionData() {
     for (let i = 1; i < extRows.length; i++) {
       const r = extRows[i];
       const rawDate = r[0];
-      const partner = String(r[3] || '').trim();   // Column D = Partner Name
-      const rawAmt = r[5];                          // Column F = Amount
+      const voucherType = String(r[1] || '').trim();  // Column B = Voucher Type
+      const partner = String(r[3] || '').trim();       // Column D = Partner Name
+      const rawAmt = r[5];                             // Column F = Amount
       if (!partner || !rawDate) continue;
+      if (voucherType.toUpperCase() !== 'RECEIPT') continue;
       if (!validNames.has(partner.toLowerCase())) continue;
 
       let dateStr = '';
