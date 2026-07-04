@@ -1356,7 +1356,7 @@ function getModelData() {
   const result = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    result.push({ rowIndex: i + 1, colA: String(r[0] || ''), colB: String(r[1] || ''), colC: String(r[2] || ''), colD: String(r[3] || ''), colE: String(r[4] || ''), colF: String(r[5] || ''), colG: String(r[6] || ''), colH: String(r[7] || ''), colI: String(r[8] || ''), colJ: String(r[9] || '') });
+    result.push({ rowIndex: i + 1, colA: String(r[0] || ''), colB: String(r[1] || ''), colC: String(r[2] || ''), colD: String(r[3] || ''), colE: String(r[4] || ''), colF: String(r[5] || ''), colG: String(r[6] || ''), colH: String(r[7] || ''), colI: String(r[8] || ''), colJ: String(r[9] || ''), colK: String(r[10] || '') });
   }
   return { success: true, data: result, headers, total: result.length };
 }

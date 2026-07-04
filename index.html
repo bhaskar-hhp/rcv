@@ -2524,10 +2524,10 @@ let editingModelRow = null;
 
 async function loadDeviceModels() {
   const body = document.getElementById('deviceModelBody');
-  body.innerHTML = '<tr><td colspan="12" style="color:#999">Loading...</td></tr>';
+  body.innerHTML = '<tr><td colspan="13" style="color:#999">Loading...</td></tr>';
   const res = await callScript('getModelData');
   if (!res?.success) {
-    body.innerHTML = '<tr><td colspan="12" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="13" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
     return;
   }
   modelData = res.data || [];
@@ -2551,10 +2551,10 @@ function renderDeviceModels() {
   const body = document.getElementById('deviceModelBody');
   document.getElementById('modelCount').textContent = rows.length;
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="12" style="color:#999">No data</td></tr>';
+    body.innerHTML = '<tr><td colspan="13" style="color:#999">No data</td></tr>';
     return;
   }
-  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ','colK'];
   let h = '';
   rows.forEach(r => {
     const editing = editingModelRow === r.rowIndex;
@@ -2591,7 +2591,7 @@ function filterDeviceModels() {
 }
 
 async function addDeviceModelRow() {
-  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ','colK'];
   const vals = {};
   keys.forEach(k => vals[k] = '');
   const label = modelHeaders[3] || 'Model name';
@@ -2619,7 +2619,7 @@ function editModelRow(rowIndex) {
 async function updateModelRow(rowIndex) {
   const r = modelData.find(x => x.rowIndex === rowIndex);
   if (!r) return;
-  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ','colK'];
   const inputs = document.querySelectorAll(`.model-input[data-row="${rowIndex}"]`);
   const updates = { rowIndex };
   inputs.forEach(inp => {
