@@ -2520,6 +2520,7 @@ async function loadDeviceSheetData() {
 // ── Device Models ────────────────────────────────────────────────────
 let modelData = [];
 let modelHeaders = [];
+let editingModelRow = null;
 
 async function loadDeviceModels() {
   const body = document.getElementById('deviceModelBody');
@@ -2556,16 +2557,31 @@ function renderDeviceModels() {
   const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
   let h = '';
   rows.forEach(r => {
+    const editing = editingModelRow === r.rowIndex;
     const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    h += '<tr><td>' + r.rowIndex + '</td>';
+    const esc = v => e(v).replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    h += '<tr>';
+    h += '<td>' + r.rowIndex + '</td>';
     keys.forEach(k => {
-      const val = e(r[k]);
-      h += k === 'colD' ? '<td><strong>' + val + '</strong></td>' : '<td>' + val + '</td>';
+      const val = r[k];
+      if (editing) {
+        h += `<td><input type="text" class="model-input" data-col="${k}" data-row="${r.rowIndex}" value="${esc(val)}" style="width:100%;padding:2px 4px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:4px;box-sizing:border-box;"></td>`;
+      } else {
+        h += k === 'colD' ? '<td><strong>' + e(val) + '</strong></td>' : '<td>' + e(val) + '</td>';
+      }
     });
-    h += `<td style="white-space:nowrap">
+    if (editing) {
+      h += `<td style="white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="updateModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Update</button>
+        <button class="btn-sm btn-outline" onclick="editModelRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Cancel</button>
+      </td>`;
+    } else {
+      h += `<td style="white-space:nowrap">
         <button class="btn-sm btn-outline" onclick="editModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
-        <button class="btn-sm btn-outline" onclick="deleteModelRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
-      </td></tr>`;
+        <button class="btn-sm btn-outline" onclick="deleteModelRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+      </td>`;
+    }
+    h += '</tr>';
   });
   body.innerHTML = h;
 }
@@ -2591,22 +2607,37 @@ async function addDeviceModelRow() {
   }
 }
 
-async function editModelRow(rowIndex) {
+function editModelRow(rowIndex) {
+  if (editingModelRow === rowIndex) {
+    editingModelRow = null;
+  } else {
+    editingModelRow = rowIndex;
+  }
+  renderDeviceModels();
+}
+
+async function updateModelRow(rowIndex) {
   const r = modelData.find(x => x.rowIndex === rowIndex);
   if (!r) return;
   const keys = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ'];
+  const inputs = document.querySelectorAll(`.model-input[data-row="${rowIndex}"]`);
   const updates = { rowIndex };
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i];
-    const label = modelHeaders[i] || k;
-    const val = prompt('Enter value for ' + label + ' (current: ' + r[k] + '):', r[k]);
-    if (val === null) return;
-    updates[k] = val;
-  }
+  inputs.forEach(inp => {
+    const col = inp.dataset.col;
+    if (col) updates[col] = inp.value;
+  });
   const res = await callScript('updateModelRow', updates);
   if (res?.success) {
+    editingModelRow = null;
     showMsg('deviceModelMsg', '\u2705 Row updated', 'success');
-    loadDeviceModels();
+    // update local modelData
+    const row = modelData.find(x => x.rowIndex === rowIndex);
+    if (row) {
+      keys.forEach(k => {
+        if (updates[k] !== undefined) row[k] = updates[k];
+      });
+    }
+    renderDeviceModels();
   } else {
     showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
   }
