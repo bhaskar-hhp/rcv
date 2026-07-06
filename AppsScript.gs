@@ -1463,9 +1463,11 @@ function getOutstandingData() {
       for (let i = 1; i < extRows.length; i++) {
         const r = extRows[i];
         const dateRaw = r[0];
+        const voucherType = String(r[1] || '').trim().toUpperCase(); // Column B
         const name = String(r[3] || '').trim().toLowerCase();
         const amt = parseFloat(String(r[5] || '0').replace(/,/g, '')) || 0;
         if (!name || !amt || !dateRaw) continue;
+        if (voucherType !== 'TAX INVOICE') continue;
         let dateObj;
         if (typeof dateRaw === 'object' && typeof dateRaw.getMonth === 'function') {
           dateObj = new Date(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate());
