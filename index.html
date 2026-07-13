@@ -963,8 +963,8 @@ async function batchSubmitNew() {
   // Switch to Pending tab
   document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('.gst-tab[data-filter="pending"]').classList.add('active');
-  loadGstCalc('pending');
-  setTimeout(() => showMsg('pendingMsg', subMsg, 'success'), 300);
+  await loadGstCalc('pending');
+  showMsg('pendingMsg', subMsg, 'success');
 }
 
 async function batchPushAndSubmitNew() {
@@ -999,8 +999,8 @@ async function batchPushAndSubmitNew() {
   // Switch to Pending tab
   document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
   document.querySelector('.gst-tab[data-filter="pending"]').classList.add('active');
-  loadGstCalc('pending');
-  setTimeout(() => showMsg('pendingMsg', pushSubMsg, 'success'), 300);
+  await loadGstCalc('pending');
+  showMsg('pendingMsg', pushSubMsg, 'success');
 }
 
 async function batchPushPrimaryNew() {
