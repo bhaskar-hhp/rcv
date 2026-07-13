@@ -954,12 +954,17 @@ async function batchSubmitNew() {
     if (result?.success) count++;
   }
   btn.disabled = false; btn.innerHTML = 'Submit Selected';
-  showMsg('newOrderMsg', '\u2705 ' + count + ' row(s) submitted', 'success');
+  const subMsg = '\u2705 ' + count + ' row(s) submitted';
   newRows = newRows.filter(r => !newSelRows.has(r.id));
   newSelRows.clear();
   renderNewRows();
   loadClosingBalance();
   gstLoaded = false;
+  // Switch to Pending tab
+  document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+  document.querySelector('.gst-tab[data-filter="pending"]').classList.add('active');
+  loadGstCalc('pending');
+  setTimeout(() => showMsg('pendingMsg', subMsg, 'success'), 300);
 }
 
 async function batchPushAndSubmitNew() {
@@ -985,12 +990,17 @@ async function batchPushAndSubmitNew() {
     if (subResult?.success) submitCount++;
   }
   btn.disabled = false; btn.innerHTML = 'Push & Submit Selected';
-  showMsg('newOrderMsg', '\u2705 Pushed: ' + pushCount + ', Submitted: ' + submitCount, 'success');
+  const pushSubMsg = '\u2705 Pushed: ' + pushCount + ', Submitted: ' + submitCount;
   newRows = newRows.filter(r => !newSelRows.has(r.id));
   newSelRows.clear();
   renderNewRows();
   loadClosingBalance();
   gstLoaded = false;
+  // Switch to Pending tab
+  document.querySelectorAll('.gst-tab').forEach(x => x.classList.remove('active'));
+  document.querySelector('.gst-tab[data-filter="pending"]').classList.add('active');
+  loadGstCalc('pending');
+  setTimeout(() => showMsg('pendingMsg', pushSubMsg, 'success'), 300);
 }
 
 async function batchPushPrimaryNew() {
