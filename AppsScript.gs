@@ -174,6 +174,10 @@ function doPost(e) {
         result = fetchOrders(data.type || 'secondary');
         break;
 
+      case 'refreshGstPending':
+        result = refreshGstPendingRows();
+        break;
+
       case 'getGstCalc':
         result = getGstCalcData();
         break;
@@ -707,6 +711,99 @@ function fetchOrders(type) {
     return { success: true, count: (result.data || []).length, data: result.data };
   }
   return { success: false, error: 'HTTP ' + result.status, data: result.data };
+}
+
+// ── Refresh Pending GST Stats from Jio ────────────────────────────
+function refreshGstPendingRows() {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const custNum = userInfo.CustomerNum || '660002825';
+
+  const today = new Date();
+  const twoDaysAgo = new Date(today.getTime() - 2 * 86400000);
+  const fmt = d => Utilities.formatDate(d, 'IST', "yyyy-MM-dd'T'HH:mm:ss");
+  const fmtDate = d => Utilities.formatDate(d, 'IST', 'dd-MMM-yyyy');
+
+  const fetchOrdersByRange = (from, to) => {
+    const params = {
+      soldToParty: "'" + custNum + "'",
+      statusType: "'A'",
+      shipToParty: "'" + custNum + "'",
+      userInd: "''",
+      returnInd: "''",
+      fromDate: "'" + fmt(from) + "'",
+      toDate: "'" + fmt(to) + "'",
+      pushOrderInd: "'S'",
+      userType: 'ZD',
+    };
+    const qs = Object.entries(params).map(([k, v]) => k + '=' + v).join('&');
+    const path = '/api/dsm-orders/e-topup-orders?' + qs;
+    const result = jioApi('GET', path, null, fullName, userId);
+    if (result.status === 200) {
+      return Array.isArray(result.data) ? result.data : [];
+    }
+    return [];
+  };
+
+  const orders = fetchOrdersByRange(twoDaysAgo, today);
+  const todayOrders = fetchOrdersByRange(today, today);
+
+  const completed = {};
+  for (const o of orders) {
+    const num = String(o.OrderNum || '').replace(/[^\d]/g, '');
+    if (num) completed[num] = o.StatusDesc || '';
+  }
+
+  const todayOrdersList = [];
+  for (const o of todayOrders) {
+    const num = String(o.OrderNum || '').replace(/[^\d]/g, '');
+    if (num) {
+      todayOrdersList.push({
+        orderId: num,
+        date: o.CreationDate ? fmtDate(new Date(parseInt((o.CreationDate || '').replace('/Date(', '').replace(')/', '')))) : '',
+        custName: String(o.CustName || ''),
+      });
+    }
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('gst_calc');
+  if (!sheet) return { success: false, error: 'gst_calc not found' };
+  const rows = sheet.getDataRange().getValues();
+  let updated = 0;
+  const unmatchedRows = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const rawRemark = rows[i][7];
+    const rawOrderId = rows[i][1];
+    const remark = String(rawRemark || '').trim();
+    const orderId = String(rawOrderId || '').replace(/[^\d]/g, '');
+    const partner = String(rows[i][2] || '').trim();
+
+    if ((remark === 'Pending' || remark === '') && orderId) {
+      const jioStatus = completed[orderId] || '(not in API)';
+      if (jioStatus === 'Completed') {
+        sheet.getRange(i + 1, 8).setValue('Transferred');
+        updated++;
+      }
+    }
+
+    if ((remark === 'Pending' || remark === '') && !orderId && partner) {
+      const sheetDate = rows[i][0] && typeof rows[i][0] === 'object' && typeof rows[i][0].getMonth === 'function'
+        ? fmtDate(rows[i][0]) : String(rows[i][0] || '');
+      unmatchedRows.push({ rowIndex: i + 1, partner, date: sheetDate });
+    }
+  }
+
+  return {
+    success: true,
+    updated,
+    todayOrders: todayOrdersList,
+    unmatchedRows,
+  };
 }
 
 // ── Add Credit Row to gst_calc ────────────────────────────────────

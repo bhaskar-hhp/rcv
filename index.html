@@ -48,7 +48,7 @@
     th { color: #64748b; font-weight: 600; font-size: .7rem; text-transform: uppercase;
          letter-spacing: .04em; background: #f8fafc; }
     tr:hover td { background: #f8fafc; }
-    .msg { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: .85rem; display: none; }
+    .msg { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: .85rem; display: none; user-select: all; }
     .msg.show { display: block; }
     .msg-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .msg-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
@@ -75,6 +75,15 @@
                      border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
                      border: 1px solid #e2e8f0; min-width: 180px; display: none;
                      z-index: 10; overflow: hidden; margin-top: 4px; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal-box { background: #fff; border-radius: 12px; padding: 20px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.15); }
+    .modal-box h3 { margin: 0 0 12px; color: #1e293b; font-size: 1rem; }
+    .modal-close { float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; }
+    .modal-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .modal-table th { padding: 6px 8px; text-align: left; background: #f1f5f9; font-size: .7rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+    .modal-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+    .order-btn { display: inline-block; padding: 3px 8px; margin: 2px; border-radius: 4px; background: #eef2ff; color: #6366f1; border: 1px solid #c7d2fe; cursor: pointer; font-size: .75rem; }
+    .order-btn:hover { background: #6366f1; color: #fff; }
     .menu-dropdown.show { display: block; }
     .menu-item { display: block; width: 100%; text-align: left; padding: 12px 18px;
                  background: none; border: none; font-size: .85rem; font-weight: 500;
@@ -1392,6 +1401,9 @@ function renderGstTable(filter, tallyMap) {
     <button class="btn-sm btn-outline" id="batchDeleteBtn" onclick="batchDelete()" style="color:#dc2626;border-color:#dc2626">Delete</button>
     <span style="font-size:.75rem;color:#64748b;margin-left:8px"><span id="selCount">0</span> selected</span>
     <button class="btn-sm btn-outline" onclick="refreshGst()" style="margin-left:auto">↻ Refresh</button>`
+  if (filter === 'pending') {
+    html += `<button class="btn-sm btn-outline" onclick="checkJioStat()" style="margin-left:4px">Check Jio Stat</button>`;
+  }
   if (filter === 'all') {
     if (!window._rcvDateFrom) {
       const today = new Date();
@@ -1462,6 +1474,146 @@ function refreshGst() {
   selectedRows.clear();
   const filter = document.querySelector('.gst-tab.active')?.dataset?.filter || 'pending';
   loadGstCalc(filter);
+}
+
+async function checkJioStat() {
+  const btn = document.querySelector('button[onclick*="checkJioStat"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Checking...'; }
+  const res = await callScript('refreshGstPending');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Check Jio Stat'; }
+  gstLoaded = false;
+  await loadGstCalc('pending');
+  if (!res?.success) {
+    showMsg('pendingMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+    return;
+  }
+  let msg = '';
+  if (res.updated > 0) msg += '\u2705 ' + res.updated + ' remark(s) updated. ';
+  if (res.unmatchedRows && res.unmatchedRows.length > 0) {
+    msg += res.unmatchedRows.length + ' row(s) need an order.';
+    showMsg('pendingMsg', msg, 'info');
+    showOrderModal(res.todayOrders || [], res.unmatchedRows);
+  } else {
+    msg += 'No pending rows.';
+    showMsg('pendingMsg', msg, 'info');
+  }
+}
+
+let _selectedOrderId = null;
+let _selectedRowIndex = null;
+
+function showOrderModal(todayOrders, unmatchedRows) {
+  _selectedOrderId = null;
+  _selectedRowIndex = null;
+  window._unmatchedRows = unmatchedRows;
+
+  let ordersHtml = `<table class="modal-table" id="ordersTable"><thead><tr>
+    <th>Order ID</th><th>Date</th><th>Customer</th>
+  </tr></thead><tbody>`;
+  todayOrders.forEach(o => {
+    ordersHtml += `<tr onclick="selectOrder('${o.orderId}', this)" style="cursor:pointer">
+      <td><strong>${o.orderId}</strong></td>
+      <td>${o.date}</td>
+      <td>${o.custName}</td>
+    </tr>`;
+  });
+  ordersHtml += `</tbody></table>`;
+
+  let rowsHtml = `<table class="modal-table" id="rowsTable"><thead><tr>
+    <th>Date</th><th>Partner</th>
+  </tr></thead><tbody>`;
+  unmatchedRows.forEach(r => {
+    rowsHtml += `<tr onclick="selectRow(${r.rowIndex}, this)" data-row="${r.rowIndex}" style="cursor:pointer">
+      <td>${r.date}</td>
+      <td>${r.partner}</td>
+    </tr>`;
+  });
+  rowsHtml += `</tbody></table>`;
+
+  const html = `
+    <p style="font-size:.85rem;color:#64748b;margin-bottom:10px">
+      Selected: Order <span id="selOrder">—</span> → Row <span id="selRow">—</span>
+    </p>
+    <div style="display:flex;gap:12px;min-height:200px">
+      <div style="flex:1">
+        <h4 style="margin:0 0 8px;font-size:.8rem;color:#475569;text-transform:uppercase;letter-spacing:.04em">Today's Orders (${todayOrders.length})</h4>
+        <div style="overflow-y:auto;max-height:40vh;border:1px solid #e2e8f0;border-radius:6px">${ordersHtml}</div>
+      </div>
+      <div style="flex:1">
+        <h4 style="margin:0 0 8px;font-size:.8rem;color:#475569;text-transform:uppercase;letter-spacing:.04em">Pending Rows (${unmatchedRows.length})</h4>
+        <div style="overflow-y:auto;max-height:40vh;border:1px solid #e2e8f0;border-radius:6px">${rowsHtml}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <button id="applyOrderBtn" class="btn-sm" style="background:#6366f1;color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;opacity:.5" disabled onclick="applyOrderSelection()">Apply</button>
+    </div>`;
+
+  document.getElementById('orderSelectBody').innerHTML = html;
+  document.getElementById('orderSelectModal').style.display = 'flex';
+}
+
+function selectOrder(orderId, el) {
+  _selectedOrderId = orderId;
+  document.querySelectorAll('#ordersTable tbody tr').forEach(r => r.style.background = '');
+  el.style.background = '#eef2ff';
+  document.getElementById('selOrder').textContent = orderId;
+  updateApplyBtn();
+}
+
+function selectRow(rowIndex, el) {
+  _selectedRowIndex = rowIndex;
+  document.querySelectorAll('#rowsTable tbody tr').forEach(r => r.style.background = '');
+  el.style.background = '#eef2ff';
+  const row = window._unmatchedRows.find(r => r.rowIndex === rowIndex);
+  document.getElementById('selRow').textContent = row ? row.partner + ' (' + row.date + ')' : '#' + rowIndex;
+  updateApplyBtn();
+}
+
+function updateApplyBtn() {
+  const btn = document.getElementById('applyOrderBtn');
+  if (_selectedOrderId && _selectedRowIndex) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor = 'default';
+  }
+}
+
+async function applyOrderSelection() {
+  if (!_selectedOrderId || !_selectedRowIndex) return;
+  const btn = document.getElementById('applyOrderBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Applying...';
+
+  await callScript('updateOrderId', { rowIndex: _selectedRowIndex, orderId: _selectedOrderId });
+  refreshGst();
+
+  const rowTr = document.querySelector(`#rowsTable tbody tr[data-row="${_selectedRowIndex}"]`);
+  if (rowTr) rowTr.remove();
+
+  _selectedOrderId = null;
+  _selectedRowIndex = null;
+  document.querySelectorAll('#ordersTable tbody tr').forEach(r => r.style.background = '');
+  document.getElementById('selOrder').textContent = '—';
+  document.getElementById('selRow').textContent = '—';
+
+  btn.innerHTML = 'Apply';
+  btn.disabled = true;
+  btn.style.opacity = '.5';
+
+  if (document.querySelectorAll('#rowsTable tbody tr').length === 0) {
+    btn.innerHTML = '\u2713 All Done';
+    btn.style.background = '#166534';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+    setTimeout(closeOrderModal, 1500);
+  }
+}
+
+function closeOrderModal() {
+  document.getElementById('orderSelectModal').style.display = 'none';
 }
 
 function filterByPartner() {
@@ -3620,5 +3772,12 @@ async function approveSimSavedOrder(orderNum, btn) {
   }
 }
 </script>
+<div id="orderSelectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeOrderModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeOrderModal()">×</button>
+    <h3>Select Order for Pending Entries</h3>
+    <div id="orderSelectBody"></div>
+  </div>
+</div>
 </body>
 </html>
