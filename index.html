@@ -669,19 +669,28 @@ function showMsg(id, text, type) {
 }
 
 let _wakeLock = null;
+let _wakeLockCount = 0;
 async function acquireWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      _wakeLock = await navigator.wakeLock.request('screen');
-      _wakeLock.addEventListener('release', () => { _wakeLock = null; });
-    }
-  } catch (e) { /* wake lock not available */ }
+  _wakeLockCount++;
+  if (_wakeLockCount === 1) {
+    try {
+      if ('wakeLock' in navigator) {
+        _wakeLock = await navigator.wakeLock.request('screen');
+        _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+      }
+    } catch (e) { /* wake lock not available */ }
+  }
 }
 function releaseWakeLock() {
-  if (_wakeLock) { try { _wakeLock.release(); } catch (e) {} _wakeLock = null; }
+  _wakeLockCount = Math.max(0, _wakeLockCount - 1);
+  if (_wakeLockCount === 0 && _wakeLock) {
+    try { _wakeLock.release(); } catch (e) {}
+    _wakeLock = null;
+  }
 }
 
 async function callScript(action, params) {
+  await acquireWakeLock();
   const url = getUrl();
   try {
     const res = await fetch(url, {
@@ -689,9 +698,11 @@ async function callScript(action, params) {
       headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify({ action, ...params }),
     });
+    releaseWakeLock();
     if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
     return await res.json();
   } catch (e) {
+    releaseWakeLock();
     // Apps Script may need CORS workaround — try JSONP fallback for GET
     if (action === 'getOrders' || action === 'getUser') {
       return new Promise(resolve => {
@@ -1490,14 +1501,12 @@ function refreshGst() {
 }
 
 async function checkJioStat() {
-  await acquireWakeLock();
   const btn = document.querySelector('button[onclick*="checkJioStat"]');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Checking...'; }
   const res = await callScript('refreshGstPending');
   if (btn) { btn.disabled = false; btn.innerHTML = 'Check Jio Stat'; }
   gstLoaded = false;
   await loadGstCalc('pending');
-  releaseWakeLock();
   if (!res?.success) {
     showMsg('pendingMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
     return;
@@ -1599,12 +1608,10 @@ function updateApplyBtn() {
 
 async function applyOrderSelection() {
   if (!_selectedOrderId || !_selectedRowIndex) return;
-  await acquireWakeLock();
   const btn = document.getElementById('applyOrderBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Applying...';
 
   await callScript('updateOrderId', { rowIndex: _selectedRowIndex, orderId: _selectedOrderId });
-  releaseWakeLock();
   refreshGst();
 
   const rowTr = document.querySelector(`#rowsTable tbody tr[data-row="${_selectedRowIndex}"]`);
