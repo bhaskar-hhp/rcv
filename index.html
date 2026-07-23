@@ -3033,14 +3033,14 @@ function renderOutstandingSummary() {
   let totalCr = 0, totalDr = 0;
   for (const r of outstandingData) {
     const b = parseFloat(r._balance);
-    if (isNaN(b)) continue;
-    if (filter === 'cr' && b <= 0) continue;
-    if (filter === 'dr' && b >= 0) continue;
+    if (filter === 'cr' && (isNaN(b) || b <= 0)) continue;
+    if (filter === 'dr' && (isNaN(b) || b >= 0)) continue;
     const loc = r.location || 'Unknown';
     if (!groups[loc]) groups[loc] = { parties: [], crSum: 0, drSum: 0 };
-    groups[loc].parties.push({ tallyName: r.tallyName, balance: b });
-    if (b > 0) { groups[loc].crSum += b; totalCr += b; }
-    else { groups[loc].drSum += b; totalDr += b; }
+    const bal = isNaN(b) ? 0 : b;
+    groups[loc].parties.push({ tallyName: r.tallyName, balance: bal, rawBalance: r._balance });
+    if (bal > 0) { groups[loc].crSum += bal; totalCr += bal; }
+    else if (bal < 0) { groups[loc].drSum += bal; totalDr += bal; }
   }
   const locs = Object.keys(groups).sort();
   document.getElementById('outSummaryLocs').textContent = locs.length;
@@ -3066,8 +3066,10 @@ function renderOutstandingSummary() {
       <div id="${sid}" style="display:none;padding:4px 12px 8px">
         <table style="font-size:.75rem;width:100%"><thead><tr><th>#</th><th>Party Name</th><th style="text-align:right">Balance</th></tr></thead><tbody>`;
     g.parties.forEach((p, pi) => {
-      const balColor = p.balance > 0 ? '#16a34a' : '#dc2626';
-      h += `<tr><td>${pi+1}</td><td>${p.tallyName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right;color:${balColor};font-weight:600">${p.balance.toLocaleString('en-IN',{minimumFractionDigits:2})}</td></tr>`;
+      const isBlank = !p.rawBalance || p.rawBalance.toString().trim() === '';
+      const balColor = isBlank ? '#64748b' : (p.balance > 0 ? '#16a34a' : '#dc2626');
+      const balDisplay = isBlank ? '—' : p.balance.toLocaleString('en-IN', {minimumFractionDigits:2});
+      h += `<tr><td>${pi+1}</td><td>${p.tallyName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td><td style="text-align:right;color:${balColor};font-weight:600">${balDisplay}</td></tr>`;
     });
     h += `</tbody></table></div></div>`;
   });
