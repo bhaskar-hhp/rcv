@@ -94,9 +94,33 @@ function jioApi(method, path, body, userName, userId) {
   try {
     return { status: resp.getResponseCode(), data: JSON.parse(text) };
   } catch (e) {
-    return { status: resp.getResponseCode(), data: text };
+    return { success: false, error: e.toString() };
   }
 }
+
+function deleteDeviceSheetRow(rowIndex) {
+  const targetGid = 320908957;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+  sheet.deleteRow(rowIndex);
+  return { success: true };
+}
+
+function updateDeviceSheetRow(data) {
+  const targetGid = 320908957;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(s => s.getSheetId() === targetGid)[0];
+  if (!sheet) return { success: false, error: 'Device sheet not found' };
+  const rowIndex = data.rowIndex;
+  if (!rowIndex) return { success: false, error: 'rowIndex required' };
+  const cols = { date: 1, orderId: 2, partnerNum: 3, partnerName: 4, articleNum: 5, productName: 6, qty: 7, dealerPrice: 8, totalAmount: 9, status: 10, location: 11 };
+  for (const key in cols) {
+    if (data[key] !== undefined) {
+      sheet.getRange(rowIndex, cols[key]).setValue(data[key]);
+    }
+  }
+  return { success: true };
+}
+
 
 // ── Get user info from Jio (no X-Signature needed) ────────────────────
 function getUserInfo() {
@@ -293,6 +317,12 @@ function doPost(e) {
         break;
       case 'fetchDeviceSheetData':
         result = fetchDeviceSheetData(data);
+        break;
+      case 'deleteDeviceSheetRow':
+        result = deleteDeviceSheetRow(data.rowIndex);
+        break;
+      case 'updateDeviceSheetRow':
+        result = updateDeviceSheetRow(data);
         break;
       case 'syncDeviceSheetStatus':
         result = syncDeviceSheetStatus(data);
@@ -1371,6 +1401,7 @@ function fetchDeviceSheetData(data) {
       if (filterStatus && rowStatus !== filterStatus) continue;
 
       result.push({
+        rowIndex: i + 1,
         date: dateStr,
         orderId: String(r[1] || ''),
         partnerNum: String(r[2] || ''),

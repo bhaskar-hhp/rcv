@@ -445,7 +445,7 @@
         </div>
         <div id="deviceSheetMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr>
-          <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Location</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th>
+          <th>Date</th><th>Order ID</th><th>Partner #</th><th>Partner Name</th><th>Location</th><th>Article #</th><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="deviceSheetBody"></tbody></table></div>
       </div>
       <!-- Models sub-tab -->
@@ -2661,6 +2661,9 @@ async function syncDeviceSheetStatus() {
   }
 }
 
+let deviceSheetData = [];
+let editingDeviceSheetRow = null;
+
 async function loadDeviceSheetData() {
   document.getElementById('deviceCreateTab').style.display = 'none';
   document.getElementById('deviceSavedTab').style.display = 'none';
@@ -2675,36 +2678,106 @@ async function loadDeviceSheetData() {
     const result = await callScript('fetchDeviceSheetData', { dateFrom, dateTo, partner, location, status });
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
     if (result?.success) {
-      const tbody = document.getElementById('deviceSheetBody');
-      const data = Array.isArray(result.data) ? result.data.reverse() : [];
-      document.getElementById('dvcSheetCount').textContent = data.length;
-      if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
-      } else {
-        let html = '';
-        for (const r of data) {
-          html += '<tr>' +
-            '<td style="font-size:.7rem">' + r.date + '</td>' +
-            '<td style="font-size:.7rem">' + r.orderId + '</td>' +
-            '<td style="font-size:.7rem">' + r.partnerNum + '</td>' +
-            '<td style="font-size:.7rem">' + r.partnerName + '</td>' +
-            '<td style="font-size:.7rem">' + (r.location || '') + '</td>' +
-            '<td style="font-size:.7rem">' + r.articleNum + '</td>' +
-            '<td style="font-size:.7rem">' + r.productName + '</td>' +
-            '<td style="font-size:.7rem">' + r.qty + '</td>' +
-            '<td style="font-size:.7rem">' + r.dealerPrice + '</td>' +
-             '<td style="font-size:.7rem">' + r.totalAmount + '</td>' +
-             '<td style="font-size:.7rem"><span class="badge ' + (r.status === 'Completely Dispatched' ? 'badge-success' : r.status === 'Pending For Invoice and Dispatch' ? 'badge-error' : '') + '">' + r.status + '</span></td></tr>';
-        }
-        tbody.innerHTML = html;
-      }
-      showMsg('deviceSheetMsg', 'Loaded ' + data.length + ' rows', 'success');
+      deviceSheetData = Array.isArray(result.data) ? result.data.reverse() : [];
+      document.getElementById('dvcSheetCount').textContent = deviceSheetData.length;
+      editingDeviceSheetRow = null;
+      renderDeviceSheet();
+      showMsg('deviceSheetMsg', 'Loaded ' + deviceSheetData.length + ' rows', 'success');
     } else {
       showMsg('deviceSheetMsg', '\u274C ' + (result?.error || 'No data returned'), 'error');
     }
   } catch (e) {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Filter'; }
     showMsg('deviceSheetMsg', '\u274C ' + e.message, 'error');
+  }
+}
+
+function renderDeviceSheet() {
+  const tbody = document.getElementById('deviceSheetBody');
+  if (!deviceSheetData.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:24px">No rows found.</td></tr>';
+    return;
+  }
+  const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const esc = v => e(v).replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const fields = ['date','orderId','partnerNum','partnerName','location','articleNum','productName','qty','dealerPrice','totalAmount','status'];
+  const fieldLabels = ['Date','Order ID','Partner #','Partner Name','Location','Article #','Product','Qty','Price','Total','Status'];
+  let html = '';
+  for (const r of deviceSheetData) {
+    const editing = editingDeviceSheetRow === r.rowIndex;
+    const statusBadge = r.status === 'Completely Dispatched' ? 'badge-success' : r.status === 'Pending For Invoice and Dispatch' ? 'badge-error' : '';
+    html += '<tr>';
+    fields.forEach((f, fi) => {
+      const val = r[f] || '';
+      if (editing) {
+        html += `<td><input type="text" class="dvs-input" data-field="${f}" data-row="${r.rowIndex}" value="${esc(val)}" style="width:100%;padding:2px 4px;font-size:.7rem;border:1px solid #d0d5dd;border-radius:4px;box-sizing:border-box;"></td>`;
+      } else if (f === 'status') {
+        html += `<td style="font-size:.7rem"><span class="badge ${statusBadge}">${e(val)}</span></td>`;
+      } else {
+        html += `<td style="font-size:.7rem">${e(val)}</td>`;
+      }
+    });
+    if (editing) {
+      html += `<td style="white-space:nowrap;text-align:center">
+        <button class="btn-sm btn-outline" onclick="updateDeviceSheetRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Save</button>
+        <button class="btn-sm btn-outline" onclick="cancelEditDeviceSheetRow()" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Cancel</button>
+      </td>`;
+    } else {
+      html += `<td style="white-space:nowrap;text-align:center">
+        <button class="btn-sm btn-outline" onclick="editDeviceSheetRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
+        <button class="btn-sm btn-outline" onclick="deleteDeviceSheetRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+      </td>`;
+    }
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function editDeviceSheetRow(rowIndex) {
+  editingDeviceSheetRow = rowIndex;
+  renderDeviceSheet();
+}
+
+function cancelEditDeviceSheetRow() {
+  editingDeviceSheetRow = null;
+  renderDeviceSheet();
+}
+
+async function updateDeviceSheetRow(rowIndex) {
+  const r = deviceSheetData.find(x => x.rowIndex === rowIndex);
+  if (!r) return;
+  const inputs = document.querySelectorAll(`.dvs-input[data-row="${rowIndex}"]`);
+  const updates = { rowIndex };
+  inputs.forEach(inp => {
+    const field = inp.dataset.field;
+    if (field) updates[field] = inp.value;
+  });
+  const res = await callScript('updateDeviceSheetRow', updates);
+  if (res?.success) {
+    editingDeviceSheetRow = null;
+    const fields = ['date','orderId','partnerNum','partnerName','location','articleNum','productName','qty','dealerPrice','totalAmount','status'];
+    const row = deviceSheetData.find(x => x.rowIndex === rowIndex);
+    if (row) {
+      fields.forEach(f => { if (updates[f] !== undefined) row[f] = updates[f]; });
+    }
+    showMsg('deviceSheetMsg', '\u2705 Row updated', 'success');
+    renderDeviceSheet();
+  } else {
+    showMsg('deviceSheetMsg', '\u274C ' + (res?.error || 'Update failed'), 'error');
+  }
+}
+
+async function deleteDeviceSheetRow(rowIndex) {
+  if (!confirm('Delete row ' + rowIndex + '?')) return;
+  const res = await callScript('deleteDeviceSheetRow', { rowIndex });
+  if (res?.success) {
+    deviceSheetData = deviceSheetData.filter(r => r.rowIndex !== rowIndex);
+    editingDeviceSheetRow = null;
+    document.getElementById('dvcSheetCount').textContent = deviceSheetData.length;
+    showMsg('deviceSheetMsg', '\u2705 Row deleted', 'success');
+    renderDeviceSheet();
+  } else {
+    showMsg('deviceSheetMsg', '\u274C ' + (res?.error || 'Delete failed'), 'error');
   }
 }
 
