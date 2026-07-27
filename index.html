@@ -2719,13 +2719,13 @@ function renderDeviceSheet() {
     });
     if (editing) {
       html += `<td style="white-space:nowrap;text-align:center">
-        <button class="btn-sm btn-outline" onclick="updateDeviceSheetRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Save</button>
+        <button class="btn-sm btn-outline" onclick="updateDeviceSheetRow(${r.rowIndex}, this)" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Save</button>
         <button class="btn-sm btn-outline" onclick="cancelEditDeviceSheetRow()" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Cancel</button>
       </td>`;
     } else {
       html += `<td style="white-space:nowrap;text-align:center">
         <button class="btn-sm btn-outline" onclick="editDeviceSheetRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
-        <button class="btn-sm btn-outline" onclick="deleteDeviceSheetRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+        <button class="btn-sm btn-outline" onclick="deleteDeviceSheetRow(${r.rowIndex}, this)" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
       </td>`;
     }
     html += '</tr>';
@@ -2743,9 +2743,10 @@ function cancelEditDeviceSheetRow() {
   renderDeviceSheet();
 }
 
-async function updateDeviceSheetRow(rowIndex) {
+async function updateDeviceSheetRow(rowIndex, btn) {
   const r = deviceSheetData.find(x => x.rowIndex === rowIndex);
   if (!r) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const inputs = document.querySelectorAll(`.dvs-input[data-row="${rowIndex}"]`);
   const updates = { rowIndex };
   inputs.forEach(inp => {
@@ -2753,6 +2754,7 @@ async function updateDeviceSheetRow(rowIndex) {
     if (field) updates[field] = inp.value;
   });
   const res = await callScript('updateDeviceSheetRow', updates);
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Save'; }
   if (res?.success) {
     editingDeviceSheetRow = null;
     const fields = ['date','orderId','partnerNum','partnerName','location','articleNum','productName','qty','dealerPrice','totalAmount','status'];
@@ -2767,9 +2769,11 @@ async function updateDeviceSheetRow(rowIndex) {
   }
 }
 
-async function deleteDeviceSheetRow(rowIndex) {
+async function deleteDeviceSheetRow(rowIndex, btn) {
   if (!confirm('Delete row ' + rowIndex + '?')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const res = await callScript('deleteDeviceSheetRow', { rowIndex });
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Delete'; }
   if (res?.success) {
     deviceSheetData = deviceSheetData.filter(r => r.rowIndex !== rowIndex);
     editingDeviceSheetRow = null;
