@@ -306,6 +306,9 @@ function doPost(e) {
       case 'approveDeviceOrder':
         result = approveDeviceOrderApi(data.orderNum);
         break;
+      case 'rejectDeviceOrder':
+        result = rejectDeviceOrderApi(data.orderNum);
+        break;
       case 'getPendingDeviceOrders':
         result = fetchMyDeviceOrdersList(data.from, data.to);
         break;
@@ -335,6 +338,9 @@ function doPost(e) {
         break;
       case 'approveSimOrder':
         result = approveSimOrderApi(data.orderNum);
+        break;
+      case 'rejectSimOrder':
+        result = rejectSimOrderApi(data.orderNum);
         break;
       case 'saveSimOrder':
         result = saveSimOrderToSheet(data);
@@ -1209,6 +1215,23 @@ function approveDeviceOrderApi(orderNum) {
   return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
 }
 
+function rejectDeviceOrderApi(orderNum) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const body = { userType: 'ZD', ApprvlBlocInd: '', OrdDeleteInd: 'X', OrderNum: String(orderNum), CHNGHEADNAV: [{}] };
+  const result = jioApi('POST', '/api/dsm-orders/post-rejection-approval-set', body, fullName, userId);
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
+}
+
 function fetchPendingDeviceOrders(from, to) {
   const userInfo = getUserInfo();
   if (!userInfo) return { success: false, error: 'Auth failed' };
@@ -1721,6 +1744,23 @@ function approveSimOrderApi(orderNum) {
   const userId = startup.id || props.userId;
   const body = { userType: 'ZD', OrderNum: String(orderNum), ReleaseInd: 'Z5' };
   const result = jioApi('PUT', '/api/dsm-orders/put-approval-set', body, fullName, userId);
+  const item = Array.isArray(result.data) ? result.data[0] : result.data;
+  const bizStatus = item?.statusCode || result.status;
+  if (bizStatus === 200 || bizStatus === 201) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: 'HTTP ' + bizStatus, data: result.data };
+}
+
+function rejectSimOrderApi(orderNum) {
+  const userInfo = getUserInfo();
+  if (!userInfo) return { success: false, error: 'Auth failed' };
+  const props = getProps();
+  const startup = (userInfo.StartUp || [{}])[0];
+  const fullName = startup.fullName || props.userName;
+  const userId = startup.id || props.userId;
+  const body = { userType: 'ZD', ApprvlBlocInd: '', OrdDeleteInd: 'X', OrderNum: String(orderNum), CHNGHEADNAV: [{}] };
+  const result = jioApi('POST', '/api/dsm-orders/post-rejection-approval-set', body, fullName, userId);
   const item = Array.isArray(result.data) ? result.data[0] : result.data;
   const bizStatus = item?.statusCode || result.status;
   if (bizStatus === 200 || bizStatus === 201) {
