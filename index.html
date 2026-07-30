@@ -413,6 +413,7 @@
           <input type="date" id="dvcDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <button class="btn-sm btn-outline" onclick="applyDvcDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
           <button class="btn-sm btn-outline" id="dvcBatchApproveBtn" onclick="batchApproveDevicePending()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
+          <button class="btn-sm btn-outline" id="dvcBatchRejectBtn" onclick="batchRejectDevicePending()" style="color:#dc2626;border-color:#dc2626">Reject Selected</button>
           <button class="btn-sm btn-outline" onclick="syncDeviceSheetStatus()" style="color:#6366f1;border-color:#6366f1">Update Gsheet</button>
           <span style="font-size:.75rem;color:#64748b"><span id="dvcSelCount">0</span> selected</span>
         </div>
@@ -525,6 +526,7 @@
           <input type="date" id="simDateTo" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <button class="btn-sm btn-outline" id="simFilterBtn" onclick="applySimDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
           <button class="btn-sm btn-outline" id="simBatchApproveBtn" onclick="batchApproveSimOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
+          <button class="btn-sm btn-outline" id="simBatchRejectBtn" onclick="batchRejectSimOrders()" style="color:#dc2626;border-color:#dc2626">Reject Selected</button>
           <span style="font-size:.75rem;color:#64748b"><span id="simSelCount">0</span> selected</span>
           <span id="simAllFilterExtra" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
             <label style="font-size:.7rem;color:#64748b">Status:</label>
@@ -2612,6 +2614,7 @@ function renderDeviceSaved() {
       '<td style="text-align:center">' +
         (isPending
           ? '<button class="btn-sm btn-outline" onclick="approveDeviceSavedOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
+            + ' <button class="btn-sm btn-outline" onclick="rejectDeviceSavedOrder(\'' + o.orderId + '\',this)" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>'
           : '') +
       '</td></tr>';
   }
@@ -2650,6 +2653,28 @@ async function batchApproveDevicePending() {
   loadDeviceSaved();
 }
 
+async function batchRejectDevicePending() {
+  const cbs = document.querySelectorAll('.dvc-cb:checked');
+  if (!cbs.length) { showMsg('devicePendingMsg', 'Select orders to reject.', 'error'); return; }
+  if (!confirm('Reject ' + cbs.length + ' selected orders?')) return;
+  const btn = document.getElementById('dvcBatchRejectBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let ok = 0, fail = 0;
+  for (const cb of cbs) {
+    const orderId = cb.dataset.orderid;
+    const result = await callScript('rejectDeviceOrder', { orderNum: orderId });
+    if (result?.success) {
+      await callScript('updateDeviceOrderStatus', { orderId, status: 'Rejected' });
+      ok++;
+    } else {
+      fail++;
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Reject Selected'; }
+  showMsg('devicePendingMsg', '\u2705 Rejected ' + ok + '/' + cbs.length + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
+  loadDeviceSaved();
+}
+
 async function approveDeviceSavedOrder(orderNum, btn) {
   if (!confirm('Approve order ' + orderNum + '?')) return;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
@@ -2662,6 +2687,21 @@ async function approveDeviceSavedOrder(orderNum, btn) {
   } else {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
+async function rejectDeviceSavedOrder(orderNum, btn) {
+  if (!confirm('Reject order ' + orderNum + '?')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('rejectDeviceOrder', { orderNum });
+  if (result?.success) {
+    await callScript('updateDeviceOrderStatus', { orderId: orderNum, status: 'Rejected' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Reject'; }
+    showMsg('devicePendingMsg', '\u2705 Rejected ' + orderNum, 'success');
+    loadDeviceSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Reject'; }
+    showMsg('devicePendingMsg', '\u274C ' + (result?.error || 'Reject failed'), 'error');
   }
 }
 
@@ -3860,6 +3900,7 @@ function renderSimSaved() {
       '<td style="text-align:center">' +
         (isPending
           ? '<button class="btn-sm btn-outline" onclick="approveSimSavedOrder(\'' + o.orderId + '\',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Approve</button>'
+            + ' <button class="btn-sm btn-outline" onclick="rejectSimSavedOrder(\'' + o.orderId + '\',this)" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>'
           : '') +
       '</td></tr>';
   }
@@ -3898,6 +3939,28 @@ async function batchApproveSimOrders() {
   loadSimSaved();
 }
 
+async function batchRejectSimOrders() {
+  const cbs = document.querySelectorAll('.sim-cb:checked');
+  if (!cbs.length) { showMsg('simSavedMsg', 'Select orders to reject.', 'error'); return; }
+  if (!confirm('Reject ' + cbs.length + ' selected orders?')) return;
+  const btn = document.getElementById('simBatchRejectBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  let ok = 0, fail = 0;
+  for (const cb of cbs) {
+    const orderId = cb.dataset.orderid;
+    const result = await callScript('rejectSimOrder', { orderNum: orderId });
+    if (result?.success) {
+      await callScript('updateSimOrderStatus', { orderId, status: 'Rejected' });
+      ok++;
+    } else {
+      fail++;
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Reject Selected'; }
+  showMsg('simSavedMsg', '\u2705 Rejected ' + ok + '/' + cbs.length + (fail ? ', ' + fail + ' failed' : ''), fail ? 'error' : 'success');
+  loadSimSaved();
+}
+
 async function approveSimSavedOrder(orderNum, btn) {
   if (!confirm('Approve order ' + orderNum + '?')) return;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
@@ -3910,6 +3973,21 @@ async function approveSimSavedOrder(orderNum, btn) {
   } else {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('simSavedMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
+async function rejectSimSavedOrder(orderNum, btn) {
+  if (!confirm('Reject order ' + orderNum + '?')) return;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const result = await callScript('rejectSimOrder', { orderNum });
+  if (result?.success) {
+    await callScript('updateSimOrderStatus', { orderId: orderNum, status: 'Rejected' });
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Reject'; }
+    showMsg('simSavedMsg', '\u2705 Rejected ' + orderNum, 'success');
+    loadSimSaved();
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Reject'; }
+    showMsg('simSavedMsg', '\u274C ' + (result?.error || 'Reject failed'), 'error');
   }
 }
 
