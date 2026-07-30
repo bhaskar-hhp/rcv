@@ -3920,11 +3920,21 @@ async function loadDashboard() {
     callScript('getPendingSimOrders', {}),
     callScript('getPendingDeviceOrders', {}),
   ]);
-  const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
-    r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
-  );
-  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
-  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
+  const cutoff = Date.now() - 4 * 86400000;
+  const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r => {
+    const parts = (r.date || '').match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (!parts) return false;
+    const dt = new Date(+parts[3], +parts[2] - 1, +parts[1]);
+    return dt.getTime() >= cutoff && (r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete'));
+  });
+  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => {
+    const ts = parseTimestamp(r.CreationDate);
+    return ts >= cutoff && (r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
+  });
+  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => {
+    const ts = parseTimestamp(r.CreationDate);
+    return ts >= cutoff && (r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
+  });
   msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending';
   msgEl.className = 'msg show msg-success';
   let html = '';
@@ -3978,6 +3988,11 @@ function fmtDateStr(d) {
     if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
   }
   return d;
+}
+function parseTimestamp(d) {
+  if (!d) return 0;
+  const m = d.match(/\/Date\((\d+)\)\//);
+  return m ? parseInt(m[1]) : 0;
 }
 </script>
 <div id="orderSelectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeOrderModal()">
