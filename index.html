@@ -516,7 +516,7 @@
       </div>
 
       <div id="simOpenTab" style="display:none;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;white-space:nowrap">
           <label style="font-size:.7rem;color:#64748b">From:</label>
           <input type="date" id="simDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <label style="font-size:.7rem;color:#64748b">To:</label>
@@ -524,7 +524,7 @@
           <button class="btn-sm btn-outline" id="simFilterBtn" onclick="applySimDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
           <button class="btn-sm btn-outline" id="simBatchApproveBtn" onclick="batchApproveSimOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
           <span style="font-size:.75rem;color:#64748b"><span id="simSelCount">0</span> selected</span>
-          <span id="simAllFilterExtra" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="simAllFilterExtra" style="display:none;gap:8px;align-items:center;flex-shrink:0">
             <label style="font-size:.7rem;color:#64748b">Status:</label>
             <select id="simStatusFilter" onchange="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
               <option value="">All</option>
