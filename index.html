@@ -3915,27 +3915,25 @@ async function loadDashboard() {
   const content = document.getElementById('dashboardContent');
   msgEl.textContent = 'Loading...';
   content.innerHTML = '';
+  const now = new Date();
+  const from = new Date(now.getTime() - 4 * 86400000);
+  const fromStr = from.getFullYear() + '-' + String(from.getMonth()+1).padStart(2,'0') + '-' + String(from.getDate()).padStart(2,'0') + 'T00:00:00';
+  const toStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T23:59:59';
   const [gstRes, simRes, devRes] = await Promise.all([
     callScript('getGstCalc'),
-    callScript('getPendingSimOrders', {}),
-    callScript('getPendingDeviceOrders', {}),
+    callScript('getPendingSimOrders', { from: fromStr, to: toStr }),
+    callScript('getPendingDeviceOrders', { from: fromStr, to: toStr }),
   ]);
-  const cutoff = Date.now() - 4 * 86400000;
-  const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r => {
-    const parts = (r.date || '').match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-    if (!parts) return false;
-    const dt = new Date(+parts[3], +parts[2] - 1, +parts[1]);
-    return dt.getTime() >= cutoff && (r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete'));
-  });
-  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => {
-    const ts = parseTimestamp(r.CreationDate);
-    return ts >= cutoff && (r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
-  });
-  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => {
-    const ts = parseTimestamp(r.CreationDate);
-    return ts >= cutoff && (r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
-  });
-  msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending';
+  const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
+    r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
+  );
+  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r =>
+    r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch'
+  );
+  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r =>
+    r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch'
+  );
+  msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending (last 4 days)';
   msgEl.className = 'msg show msg-success';
   let html = '';
   html += buildDashSection('RCV Pending', rcvPending.length, rcvPending, [
