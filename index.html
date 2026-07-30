@@ -3995,72 +3995,84 @@ let dashGstData = [];
 let dashSimData = [];
 let dashDevData = [];
 
-async function dashApprove(rowIndex) {
+async function dashApprove(rowIndex, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const row = dashGstData.find(r => r.rowIndex === rowIndex);
-  if (!row || !row.orderId) { showMsg('dashboardMsg', 'No order ID to approve.', 'error'); return; }
-  if (!confirm('Approve order ' + row.orderId + '?')) return;
+  if (!row || !row.orderId) { showMsg('dashboardMsg', 'No order ID to approve.', 'error'); loadDashboard(); return; }
+  if (!confirm('Approve order ' + row.orderId + '?')) { loadDashboard(); return; }
   const result = await callScript('approveOrder', { orderNum: row.orderId, amount: row.amount });
   if (result?.success) {
     await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+    loadDashboard();
   }
 }
 
-async function dashComplete(rowIndex) {
+async function dashComplete(rowIndex, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
   const row = dashGstData.find(r => r.rowIndex === rowIndex);
-  if (!row) return;
-  if (!confirm('Mark row as Completed?')) return;
+  if (!row) { loadDashboard(); return; }
+  if (!confirm('Mark row as Completed?')) { loadDashboard(); return; }
   const result = await callScript('completeRow', { rowIndex });
   if (result?.success) {
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Complete failed'), 'error');
+    loadDashboard();
   }
 }
 
-async function dashApproveSim(orderId) {
-  if (!confirm('Approve SIM order ' + orderId + '?')) return;
+async function dashApproveSim(orderId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  if (!confirm('Approve SIM order ' + orderId + '?')) { loadDashboard(); return; }
   const result = await callScript('approveSimOrder', { orderNum: orderId });
   if (result?.success) {
     await callScript('updateSimOrderStatus', { orderId, status: 'Approved' });
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+    loadDashboard();
   }
 }
 
-async function dashApproveDevice(orderId) {
-  if (!confirm('Approve Device order ' + orderId + '?')) return;
+async function dashApproveDevice(orderId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  if (!confirm('Approve Device order ' + orderId + '?')) { loadDashboard(); return; }
   const result = await callScript('approveDeviceOrder', { orderNum: orderId });
   if (result?.success) {
     await callScript('updateDeviceOrderStatus', { orderId, status: 'Approved' });
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+    loadDashboard();
   }
 }
 
-async function dashRejectSim(orderId) {
-  if (!confirm('Reject SIM order ' + orderId + '?')) return;
+async function dashRejectSim(orderId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  if (!confirm('Reject SIM order ' + orderId + '?')) { loadDashboard(); return; }
   const result = await callScript('rejectSimOrder', { orderNum: orderId });
   if (result?.success) {
     await callScript('updateSimOrderStatus', { orderId, status: 'Rejected' });
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Reject failed'), 'error');
+    loadDashboard();
   }
 }
 
-async function dashRejectDevice(orderId) {
-  if (!confirm('Reject Device order ' + orderId + '?')) return;
+async function dashRejectDevice(orderId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  if (!confirm('Reject Device order ' + orderId + '?')) { loadDashboard(); return; }
   const result = await callScript('rejectDeviceOrder', { orderNum: orderId });
   if (result?.success) {
     await callScript('updateDeviceOrderStatus', { orderId, status: 'Rejected' });
     loadDashboard();
   } else {
     showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Reject failed'), 'error');
+    loadDashboard();
   }
 }
 
@@ -4120,8 +4132,8 @@ async function loadDashboard() {
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
     { label: 'Ledger Bal', fn: r => bal(rcvTallyName(r)), tdCls: r => balCls(rcvTallyName(r)) },
     { label: 'Action', raw: true, fn: r => r.remark === 'Transferred'
-      ? '<button class="btn-sm btn-outline" onclick="dashComplete(' + r.rowIndex + ')" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Complete</button>'
-      : r.hasOrderId ? '<button class="btn-sm btn-outline" onclick="dashApprove(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''
+      ? '<button class="btn-sm btn-outline" onclick="dashComplete(' + r.rowIndex + ',this)" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Complete</button>'
+      : r.hasOrderId ? '<button class="btn-sm btn-outline" onclick="dashApprove(' + r.rowIndex + ',this)" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''
     },
   ], 'dashRcv');
   html += buildDashSection('SIM Pending', simPending.length, simPending, [
@@ -4129,16 +4141,16 @@ async function loadDashboard() {
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
     { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
     { label: 'Action', raw: true, fn: r => r.StatusDesc === 'Pending For Approval'
-      ? '<button class="btn-sm btn-outline" onclick="dashApproveSim(\'' + r.OrderNum + '\')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>'
-        + ' <button class="btn-sm btn-outline" onclick="dashRejectSim(\'' + r.OrderNum + '\')" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>' : '' },
+      ? '<button class="btn-sm btn-outline" onclick="dashApproveSim(\'' + r.OrderNum + '\',this)" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>'
+        + ' <button class="btn-sm btn-outline" onclick="dashRejectSim(\'' + r.OrderNum + '\',this)" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>' : '' },
   ], 'dashSim');
   html += buildDashSection('Device Pending', devPending.length, devPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
     { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
     { label: 'Action', raw: true, fn: r => r.StatusDesc === 'Pending For Approval'
-      ? '<button class="btn-sm btn-outline" onclick="dashApproveDevice(\'' + r.OrderNum + '\')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>'
-        + ' <button class="btn-sm btn-outline" onclick="dashRejectDevice(\'' + r.OrderNum + '\')" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>' : '' },
+      ? '<button class="btn-sm btn-outline" onclick="dashApproveDevice(\'' + r.OrderNum + '\',this)" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>'
+        + ' <button class="btn-sm btn-outline" onclick="dashRejectDevice(\'' + r.OrderNum + '\',this)" style="color:#dc2626;border-color:#dc2626;padding:2px 6px;font-size:.7rem">Reject</button>' : '' },
   ], 'dashDev');
   content.innerHTML = html;
 }
