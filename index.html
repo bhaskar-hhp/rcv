@@ -3923,8 +3923,8 @@ async function loadDashboard() {
   const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
     r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
   );
-  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval');
-  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval');
+  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
+  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch');
   msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending';
   msgEl.className = 'msg show msg-success';
   let html = '';
