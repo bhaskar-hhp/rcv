@@ -4015,7 +4015,7 @@ async function loadDashboard() {
   let html = '';
   html += buildDashSection('RCV Pending', rcvPending.length, rcvPending, [
     { label: 'Date', fn: r => r.date }, { label: 'Partner', fn: r => r.partner },
-    { label: 'Amount', fn: r => r.amount },
+    { label: 'Basic', fn: r => r.basic },
     { label: 'Status', fn: r => r.status, cls: r => r.status === 'In Credit' ? 'badge-pending' : r.status === 'Completed' ? 'badge-success' : r.status === 'Transfer complete' ? 'badge-success' : '' },
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
     { label: 'Ledger Bal', fn: r => bal(rcvTallyName(r)), tdCls: r => balCls(rcvTallyName(r)) },
