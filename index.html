@@ -3956,7 +3956,7 @@ async function loadDashboard() {
     { label: 'Date', fn: r => r.date }, { label: 'Partner', fn: r => r.partner },
     { label: 'Amount', fn: r => r.amount }, { label: 'Status', fn: r => r.status },
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
-    { label: 'Ledger Bal', fn: r => { const v = (r.closingBal || '').replace(/,/g,''); return v && !isNaN(v) ? parseFloat(v).toLocaleString('en-IN', {minimumFractionDigits:2}) : (r.closingBal || ''); }, tdCls: r => { const n = parseFloat((r.closingBal || '').replace(/,/g,'')); return n > 0 ? 'bal-pos' : n < 0 ? 'bal-neg' : ''; } },
+    { label: 'Ledger Bal', fn: r => bal(lookupTallyBalance(r.partner, deviceTallyMap)), tdCls: r => balCls(lookupTallyBalance(r.partner, deviceTallyMap)) },
   ], 'dashRcv');
   html += buildDashSection('SIM Pending', simPending.length, simPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
