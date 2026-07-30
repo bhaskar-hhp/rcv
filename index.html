@@ -516,7 +516,7 @@
       </div>
 
       <div id="simOpenTab" style="display:none;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <label style="font-size:.7rem;color:#64748b">From:</label>
           <input type="date" id="simDateFrom" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
           <label style="font-size:.7rem;color:#64748b">To:</label>
@@ -524,20 +524,20 @@
           <button class="btn-sm btn-outline" id="simFilterBtn" onclick="applySimDateFilter()" style="color:#6366f1;border-color:#6366f1">Filter</button>
           <button class="btn-sm btn-outline" id="simBatchApproveBtn" onclick="batchApproveSimOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
           <span style="font-size:.75rem;color:#64748b"><span id="simSelCount">0</span> selected</span>
-        </div>
-        <div id="simAllFilterBar" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
-          <label style="font-size:.7rem;color:#64748b">Status:</label>
-          <select id="simStatusFilter" onchange="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
-            <option value="">All</option>
-            <option>Pending For Approval</option>
-            <option>Approved</option>
-            <option>Completed</option>
-            <option>Rejected</option>
-            <option>Completely Dispatched</option>
-            <option>Pending For Invoice and Dispatch</option>
-          </select>
-          <label style="font-size:.7rem;color:#64748b">Name:</label>
-          <input type="text" id="simNameFilter" placeholder="Search customer name..." oninput="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+          <span id="simAllFilterExtra" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:.7rem;color:#64748b">Status:</label>
+            <select id="simStatusFilter" onchange="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+              <option value="">All</option>
+              <option>Pending For Approval</option>
+              <option>Approved</option>
+              <option>Completed</option>
+              <option>Rejected</option>
+              <option>Completely Dispatched</option>
+              <option>Pending For Invoice and Dispatch</option>
+            </select>
+            <label style="font-size:.7rem;color:#64748b">Name:</label>
+            <input type="text" id="simNameFilter" placeholder="Search customer name..." oninput="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:150px">
+          </span>
         </div>
         <div id="simSavedMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
@@ -1827,7 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = t.dataset.simtab;
         document.getElementById('simCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('simOpenTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
-        document.getElementById('simAllFilterBar').style.display = tab === 'all' ? 'flex' : 'none';
+        document.getElementById('simAllFilterExtra').style.display = tab === 'all' ? 'flex' : 'none';
         if (tab === 'open' || tab === 'all') {
           const from = document.getElementById('simDateFrom').value;
           const to = document.getElementById('simDateTo').value;
