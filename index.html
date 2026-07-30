@@ -3990,9 +3990,11 @@ function fmtDateStr(d) {
   return d;
 }
 function parseTimestamp(d) {
-  if (!d) return 0;
+  if (!d) return Infinity;
   const m = d.match(/\/Date\((\d+)\)\//);
-  return m ? parseInt(m[1]) : 0;
+  if (m) return parseInt(m[1]);
+  const dt = new Date(d);
+  return isNaN(dt) ? Infinity : dt.getTime();
 }
 </script>
 <div id="orderSelectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeOrderModal()">
