@@ -3913,6 +3913,33 @@ async function approveSimSavedOrder(orderNum, btn) {
   }
 }
 
+let dashGstData = [];
+
+async function dashApprove(rowIndex) {
+  const row = dashGstData.find(r => r.rowIndex === rowIndex);
+  if (!row || !row.orderId) { showMsg('dashboardMsg', 'No order ID to approve.', 'error'); return; }
+  if (!confirm('Approve order ' + row.orderId + '?')) return;
+  const result = await callScript('approveOrder', { orderNum: row.orderId, amount: row.amount });
+  if (result?.success) {
+    await callScript('updateRemark', { rowIndex, remark: 'Transferred' });
+    loadDashboard();
+  } else {
+    showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
+async function dashComplete(rowIndex) {
+  const row = dashGstData.find(r => r.rowIndex === rowIndex);
+  if (!row) return;
+  if (!confirm('Mark row as Completed?')) return;
+  const result = await callScript('completeRow', { rowIndex });
+  if (result?.success) {
+    loadDashboard();
+  } else {
+    showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Complete failed'), 'error');
+  }
+}
+
 async function loadDashboard() {
   const msgEl = document.getElementById('dashboardMsg');
   const content = document.getElementById('dashboardContent');
@@ -3931,6 +3958,7 @@ async function loadDashboard() {
   ]);
   deviceTallyMap = (tallyRes?.data) || {};
   deviceCustTallyMap = (custMapRes?.data) || {};
+  dashGstData = Array.isArray(gstRes?.data) ? gstRes.data : [];
   const bal = (tallyName) => {
     const raw = tallyName && tallyName in deviceTallyMap ? deviceTallyMap[tallyName] : '';
     return raw !== '' ? parseFloat(raw).toLocaleString('en-IN', {minimumFractionDigits:2}) : '';
@@ -3965,6 +3993,10 @@ async function loadDashboard() {
     { label: 'Status', fn: r => r.status, cls: r => r.status === 'In Credit' ? 'badge-pending' : r.status === 'Completed' ? 'badge-success' : r.status === 'Transfer complete' ? 'badge-success' : '' },
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
     { label: 'Ledger Bal', fn: r => bal(rcvTallyName(r)), tdCls: r => balCls(rcvTallyName(r)) },
+    { label: 'Action', raw: true, fn: r => r.remark === 'Transferred'
+      ? '<button class="btn-sm btn-outline" onclick="dashComplete(' + r.rowIndex + ')" style="color:#16a34a;border-color:#16a34a;padding:2px 6px;font-size:.7rem">Complete</button>'
+      : r.hasOrderId ? '<button class="btn-sm btn-outline" onclick="dashApprove(' + r.rowIndex + ')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : ''
+    },
   ], 'dashRcv');
   html += buildDashSection('SIM Pending', simPending.length, simPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
@@ -3991,7 +4023,7 @@ function buildDashSection(title, count, rows, columns, id) {
         const val = c.fn(r);
         const cls = typeof c.cls === 'function' ? c.cls(r) : (c.cls || '');
         const tdCls = typeof c.tdCls === 'function' ? c.tdCls(r) : (c.tdCls || '');
-        return '<td' + (tdCls ? ' class="' + tdCls + '"' : '') + '>' + (cls ? '<span class="badge ' + cls + '">' : '') + e(String(val)) + (cls ? '</span>' : '') + '</td>';
+        return '<td' + (tdCls ? ' class="' + tdCls + '"' : '') + '>' + (cls ? '<span class="badge ' + cls + '">' : '') + (c.raw ? val : e(String(val))) + (cls ? '</span>' : '') + '</td>';
       }).join('') + '</tr>';
     }
     tableHtml += '</tbody></table>';
