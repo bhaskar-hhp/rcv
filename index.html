@@ -145,14 +145,14 @@
         <span></span><span></span><span></span>
       </button>
       <div class="menu-dropdown" id="menuDropdown">
-        <button class="menu-item active" data-tab="create">RCV Order</button>
+        <button class="menu-item active" data-tab="dashboard">📊 Dashboard</button>
+        <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
+        <button class="menu-item" data-tab="create">RCV Order</button>
         <button class="menu-item" data-tab="reco">RCV Reco</button>
         <button class="menu-item" data-tab="orders">RCV Jio Orders</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="device-orders">Device Orders</button>
         <button class="menu-item" data-tab="sim-orders">SIM Order</button>
-        <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
-        <button class="menu-item" data-tab="dashboard">📊 Dashboard</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="search">Balance Search</button>
         <button class="menu-item" data-tab="status">Status</button>
@@ -168,7 +168,7 @@
   <div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
 
   <!-- Tab: Save Order -->
-  <div class="tab-pane active" id="tab-create">
+  <div class="tab-pane" id="tab-create">
     <div class="card">
       <h2>RCV Order</h2>
       <div style="display:flex;gap:4px;margin:10px 0" id="gstTabs">
@@ -551,7 +551,7 @@
   </div>  <!-- .tab-pane -->
 
   <!-- Tab: Dashboard -->
-  <div class="tab-pane" id="tab-dashboard">
+  <div class="tab-pane active" id="tab-dashboard">
     <div class="card">
       <h2>📊 Dashboard <button class="btn-sm btn-outline" onclick="loadDashboard()" style="margin-left:8px;color:#6366f1;border-color:#6366f1;vertical-align:middle">↻ Refresh</button></h2>
       <div id="dashboardMsg" class="msg"></div>
@@ -681,6 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('configStatus').className = 'msg show msg-error';
     }
   });
+  loadDashboard();
 });
 
 function getUrl() {
