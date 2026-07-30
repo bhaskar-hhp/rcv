@@ -3940,6 +3940,16 @@ async function loadDashboard() {
     return n > 0 ? 'bal-pos' : n < 0 ? 'bal-neg' : '';
   };
   const tallyNameFor = (custNum) => deviceCustTallyMap[custNum] || '';
+  const rcvTallyName = (partner) => {
+    if (!partner) return '';
+    const clean = s => s.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const p = clean(partner);
+    if (!p) return '';
+    for (const key in deviceTallyMap) {
+      if (clean(key) === p) return key;
+    }
+    return '';
+  };
   const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
     r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
   );
@@ -3956,7 +3966,7 @@ async function loadDashboard() {
     { label: 'Date', fn: r => r.date }, { label: 'Partner', fn: r => r.partner },
     { label: 'Amount', fn: r => r.amount }, { label: 'Status', fn: r => r.status },
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
-    { label: 'Ledger Bal', fn: r => bal(lookupTallyBalance(r.partner, deviceTallyMap)), tdCls: r => balCls(lookupTallyBalance(r.partner, deviceTallyMap)) },
+    { label: 'Ledger Bal', fn: r => bal(rcvTallyName(r.partner)), tdCls: r => balCls(rcvTallyName(r.partner)) },
   ], 'dashRcv');
   html += buildDashSection('SIM Pending', simPending.length, simPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
