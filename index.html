@@ -150,6 +150,8 @@
         <button class="menu-item" data-tab="device-orders">Device Orders</button>
         <button class="menu-item" data-tab="sim-orders">SIM Order</button>
         <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
+        <button class="menu-item" data-tab="dashboard">📊 Dashboard</button>
+        <hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0">
         <button class="menu-item" data-tab="search">Balance Search</button>
         <button class="menu-item" data-tab="status">Status</button>
         <button class="menu-item" data-tab="outstanding">Outstanding</button>
@@ -546,6 +548,15 @@
     </div>  <!-- .card -->
   </div>  <!-- .tab-pane -->
 
+  <!-- Tab: Dashboard -->
+  <div class="tab-pane" id="tab-dashboard">
+    <div class="card">
+      <h2>📊 Dashboard</h2>
+      <div id="dashboardMsg" class="msg"></div>
+      <div id="dashboardContent" style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+  </div>
+
   <!-- Tab: Setup -->
   <div class="tab-pane" id="tab-setup">
     <div class="card">
@@ -635,6 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (t.dataset.tab === 'collection') loadCollectionData();
       if (t.dataset.tab === 'reco') fetchRecoData();
       if (t.dataset.tab === 'dedup') loadDedupTab();
+      if (t.dataset.tab === 'dashboard') loadDashboard();
     });
   });
 
@@ -3896,6 +3908,76 @@ async function approveSimSavedOrder(orderNum, btn) {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Approve'; }
     showMsg('simSavedMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
   }
+}
+
+async function loadDashboard() {
+  const msgEl = document.getElementById('dashboardMsg');
+  const content = document.getElementById('dashboardContent');
+  msgEl.textContent = 'Loading...';
+  content.innerHTML = '';
+  const [gstRes, simRes, devRes] = await Promise.all([
+    callScript('getGstCalc'),
+    callScript('getPendingSimOrders', {}),
+    callScript('getPendingDeviceOrders', {}),
+  ]);
+  const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
+    r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
+  );
+  const simPending = (Array.isArray(simRes?.data) ? simRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval');
+  const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r => r.StatusDesc === 'Pending For Approval');
+  msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending';
+  msgEl.className = 'msg show msg-success';
+  let html = '';
+  html += buildDashSection('RCV Pending', rcvPending.length, rcvPending, [
+    { label: 'Date', fn: r => r.date }, { label: 'Partner', fn: r => r.partner },
+    { label: 'Amount', fn: r => r.amount }, { label: 'Status', fn: r => r.status },
+    { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
+  ], 'dashRcv');
+  html += buildDashSection('SIM Pending', simPending.length, simPending, [
+    { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
+    { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
+  ], 'dashSim');
+  html += buildDashSection('Device Pending', devPending.length, devPending, [
+    { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
+    { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
+  ], 'dashDev');
+  content.innerHTML = html;
+}
+
+function buildDashSection(title, count, rows, columns, id) {
+  const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  let tableHtml = '';
+  if (rows.length) {
+    tableHtml = '<table style="font-size:.75rem"><thead><tr>' +
+      columns.map(c => '<th>' + c.label + '</th>').join('') +
+      '</tr></thead><tbody>';
+    for (const r of rows) {
+      tableHtml += '<tr>' + columns.map(c => {
+        const val = c.fn(r);
+        const cls = typeof c.cls === 'function' ? c.cls(r) : (c.cls || '');
+        return '<td>' + (cls ? '<span class="badge ' + cls + '">' : '') + e(String(val)) + (cls ? '</span>' : '') + '</td>';
+      }).join('') + '</tr>';
+    }
+    tableHtml += '</tbody></table>';
+  } else {
+    tableHtml = '<p style="color:#999;padding:8px;font-size:.8rem">None pending</p>';
+  }
+  return '<div class="dash-section" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">' +
+    '<div onclick="toggleCollapse(\'' + id + '\')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;user-select:none">' +
+    '<span style="font-weight:600;font-size:.85rem">' + e(title) + '</span>' +
+    '<span class="badge ' + (count > 0 ? 'badge-error' : 'badge-success') + '" style="margin-left:4px">' + count + '</span>' +
+    '<span id="' + id + 'Icon" style="margin-left:auto;color:#94a3b8;font-size:.7rem">' + (count > 0 ? '▾' : '') + '</span></div>' +
+    '<div id="' + id + '" style="overflow-x:auto;padding:8px">' + tableHtml + '</div></div>';
+}
+
+function fmtDateStr(d) {
+  if (!d) return '';
+  const m = d.match(/\/Date\((\d+)\)\//);
+  if (m) {
+    const dt = new Date(parseInt(m[1]));
+    if (!isNaN(dt)) return String(dt.getDate()).padStart(2,'0') + '-' + MONTHS[dt.getMonth()] + '-' + dt.getFullYear();
+  }
+  return d;
 }
 </script>
 <div id="orderSelectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeOrderModal()">
