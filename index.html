@@ -3914,6 +3914,8 @@ async function approveSimSavedOrder(orderNum, btn) {
 }
 
 let dashGstData = [];
+let dashSimData = [];
+let dashDevData = [];
 
 async function dashApprove(rowIndex) {
   const row = dashGstData.find(r => r.rowIndex === rowIndex);
@@ -3940,6 +3942,28 @@ async function dashComplete(rowIndex) {
   }
 }
 
+async function dashApproveSim(orderId) {
+  if (!confirm('Approve SIM order ' + orderId + '?')) return;
+  const result = await callScript('approveSimOrder', { orderNum: orderId });
+  if (result?.success) {
+    await callScript('updateSimOrderStatus', { orderId, status: 'Approved' });
+    loadDashboard();
+  } else {
+    showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
+async function dashApproveDevice(orderId) {
+  if (!confirm('Approve Device order ' + orderId + '?')) return;
+  const result = await callScript('approveDeviceOrder', { orderNum: orderId });
+  if (result?.success) {
+    await callScript('updateDeviceOrderStatus', { orderId, status: 'Approved' });
+    loadDashboard();
+  } else {
+    showMsg('dashboardMsg', '\u274C ' + (result?.error || 'Approve failed'), 'error');
+  }
+}
+
 async function loadDashboard() {
   const msgEl = document.getElementById('dashboardMsg');
   const content = document.getElementById('dashboardContent');
@@ -3959,6 +3983,8 @@ async function loadDashboard() {
   deviceTallyMap = (tallyRes?.data) || {};
   deviceCustTallyMap = (custMapRes?.data) || {};
   dashGstData = Array.isArray(gstRes?.data) ? gstRes.data : [];
+  dashSimData = Array.isArray(simRes?.data) ? simRes.data : [];
+  dashDevData = Array.isArray(devRes?.data) ? devRes.data : [];
   const bal = (tallyName) => {
     const raw = tallyName && tallyName in deviceTallyMap ? deviceTallyMap[tallyName] : '';
     return raw !== '' ? parseFloat(raw).toLocaleString('en-IN', {minimumFractionDigits:2}) : '';
@@ -4002,11 +4028,15 @@ async function loadDashboard() {
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
     { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
+    { label: 'Action', raw: true, fn: r => r.StatusDesc === 'Pending For Approval'
+      ? '<button class="btn-sm btn-outline" onclick="dashApproveSim(\'' + r.OrderNum + '\')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : '' },
   ], 'dashSim');
   html += buildDashSection('Device Pending', devPending.length, devPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
     { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
+    { label: 'Action', raw: true, fn: r => r.StatusDesc === 'Pending For Approval'
+      ? '<button class="btn-sm btn-outline" onclick="dashApproveDevice(\'' + r.OrderNum + '\')" style="color:#166534;border-color:#166534;padding:2px 6px;font-size:.7rem">Approve</button>' : '' },
   ], 'dashDev');
   content.innerHTML = html;
 }
