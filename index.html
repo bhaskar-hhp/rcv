@@ -525,14 +525,26 @@
           <button class="btn-sm btn-outline" id="simBatchApproveBtn" onclick="batchApproveSimOrders()" style="color:#16a34a;border-color:#16a34a">Approve Selected</button>
           <span style="font-size:.75rem;color:#64748b"><span id="simSelCount">0</span> selected</span>
         </div>
+        <div id="simAllFilterBar" style="display:none;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:.7rem;color:#64748b">Status:</label>
+          <select id="simStatusFilter" onchange="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px">
+            <option value="">All</option>
+            <option>Pending For Approval</option>
+            <option>Approved</option>
+            <option>Completed</option>
+            <option>Rejected</option>
+          </select>
+          <label style="font-size:.7rem;color:#64748b">Name:</label>
+          <input type="text" id="simNameFilter" placeholder="Search customer name..." oninput="renderSimSaved()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+        </div>
         <div id="simSavedMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
           <th style="width:32px"><input type="checkbox" onchange="toggleAllSim(this.checked)"></th>
           <th>Date</th><th>Order ID</th><th>Customer #</th><th>Customer Name</th><th>Qty</th><th>Status</th><th style="text-align:center">Action</th>
         </tr></thead><tbody id="simSavedBody"></tbody></table></div>
-      </div>
-    </div>
-  </div>
+      </div>  <!-- simOpenTab -->
+    </div>  <!-- .card -->
+  </div>  <!-- .tab-pane -->
 
   <!-- Tab: Setup -->
   <div class="tab-pane" id="tab-setup">
@@ -1813,6 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = t.dataset.simtab;
         document.getElementById('simCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
         document.getElementById('simOpenTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
+        document.getElementById('simAllFilterBar').style.display = tab === 'all' ? 'flex' : 'none';
         if (tab === 'open' || tab === 'all') {
           const from = document.getElementById('simDateFrom').value;
           const to = document.getElementById('simDateTo').value;
@@ -3787,6 +3800,11 @@ function renderSimSaved() {
   let filtered = simSavedOrders;
   if (activeFilter === 'open') {
     filtered = filtered.filter(o => o.statusDesc === 'Pending For Approval');
+  } else if (activeFilter === 'all') {
+    const statusVal = document.getElementById('simStatusFilter')?.value || '';
+    const nameVal = (document.getElementById('simNameFilter')?.value || '').toLowerCase();
+    if (statusVal) filtered = filtered.filter(o => o.statusDesc === statusVal);
+    if (nameVal) filtered = filtered.filter(o => (o.customerName || '').toLowerCase().includes(nameVal));
   }
 
   if (!filtered.length) {
