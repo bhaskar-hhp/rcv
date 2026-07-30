@@ -500,13 +500,11 @@
           <div style="display:flex;gap:6px;align-items:center">
             <button class="btn-primary" id="simCreateBtn" onclick="createSimOrder()" style="min-width:120px">Create Order</button>
             <button class="btn-sm btn-outline" id="simCreateApproveBtn" onclick="createAndApproveSimOrder()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve</button>
+            <button class="btn-primary" id="simBatchCreateBtn" onclick="batchCreateSimOrders()" style="min-width:120px">Create Selected</button>
+            <button class="btn-sm btn-outline" id="simBatchCreateApproveBtn" onclick="batchCreateAndApproveSimOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
             <button class="btn-sm btn-outline" onclick="addSimRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+            <span style="font-size:.75rem;color:#64748b"><span id="simRowCount">0</span> rows</span>
           </div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <button class="btn-primary" id="simBatchCreateBtn" onclick="batchCreateSimOrders()">Create Selected</button>
-          <button class="btn-sm btn-outline" id="simBatchCreateApproveBtn" onclick="batchCreateAndApproveSimOrders()" style="color:#6366f1;border-color:#6366f1">Create &amp; Approve Selected</button>
-          <span style="font-size:.75rem;color:#64748b;margin-left:4px"><span id="simRowCount">0</span> rows</span>
         </div>
         <div id="simOrderMsg" class="msg"></div>
         <div style="overflow:visible"><table><thead><tr>
