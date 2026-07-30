@@ -3942,12 +3942,16 @@ async function loadDashboard() {
   };
   const tallyNameFor = (custNum) => deviceCustTallyMap[custNum] || '';
   const rcvTallyName = (partner) => {
-    if (!partner) return '';
-    const clean = s => s.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
-    const p = clean(partner);
+    if (!partner || !deviceTallyMap) return '';
+    const normalize = s => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+    const p = normalize(partner);
     if (!p) return '';
     for (const key in deviceTallyMap) {
-      if (clean(key) === p) return key;
+      if (normalize(key) === p) return key;
+    }
+    for (const key in deviceTallyMap) {
+      const nk = normalize(key);
+      if (nk.includes(p) || p.includes(nk)) return key;
     }
     return '';
   };
