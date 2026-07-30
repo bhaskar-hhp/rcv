@@ -41,6 +41,8 @@
     .badge-success { background: #dcfce7; color: #166534; }
     .badge-error { background: #fee2e2; color: #991b1b; }
     .badge-pending { background: #fef9c3; color: #854d0e; }
+    .bal-pos { color: #16a34a; font-weight:600; }
+    .bal-neg { color: #dc2626; font-weight:600; }
     table { width: 100%; border-collapse: collapse; font-size: .75rem; }
     th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
     #gstWrap table { font-size: .65rem; }
@@ -3919,11 +3921,25 @@ async function loadDashboard() {
   const from = new Date(now.getTime() - 4 * 86400000);
   const fromStr = from.getFullYear() + '-' + String(from.getMonth()+1).padStart(2,'0') + '-' + String(from.getDate()).padStart(2,'0') + 'T00:00:00';
   const toStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T23:59:59';
-  const [gstRes, simRes, devRes] = await Promise.all([
+  const [gstRes, simRes, devRes, tallyRes, custMapRes] = await Promise.all([
     callScript('getGstCalc'),
     callScript('getPendingSimOrders', { from: fromStr, to: toStr }),
     callScript('getPendingDeviceOrders', { from: fromStr, to: toStr }),
+    callScript('getTallyData'),
+    callScript('getCustomerTallyMapping'),
   ]);
+  deviceTallyMap = (tallyRes?.data) || {};
+  deviceCustTallyMap = (custMapRes?.data) || {};
+  const bal = (tallyName) => {
+    const raw = tallyName && tallyName in deviceTallyMap ? deviceTallyMap[tallyName] : '';
+    return raw !== '' ? parseFloat(raw).toLocaleString('en-IN', {minimumFractionDigits:2}) : '';
+  };
+  const balCls = (tallyName) => {
+    const raw = tallyName && tallyName in deviceTallyMap ? deviceTallyMap[tallyName] : '';
+    const n = parseFloat(raw);
+    return n > 0 ? 'bal-pos' : n < 0 ? 'bal-neg' : '';
+  };
+  const tallyNameFor = (custNum) => deviceCustTallyMap[custNum] || '';
   const rcvPending = (Array.isArray(gstRes?.data) ? gstRes.data : []).filter(r =>
     r.status === 'In Credit' || (r.hasOrderId && r.status !== 'Completed' && r.status !== 'Transfer complete')
   );
@@ -3940,14 +3956,17 @@ async function loadDashboard() {
     { label: 'Date', fn: r => r.date }, { label: 'Partner', fn: r => r.partner },
     { label: 'Amount', fn: r => r.amount }, { label: 'Status', fn: r => r.status },
     { label: 'Remark', fn: r => r.remark, cls: r => r.remark === 'Pending' ? 'badge-pending' : r.remark === 'Transferred' ? 'badge-success' : '' },
+    { label: 'Ledger Bal', fn: r => bal(lookupTallyBalance(r.partner, deviceTallyMap)), tdCls: r => balCls(lookupTallyBalance(r.partner, deviceTallyMap)) },
   ], 'dashRcv');
   html += buildDashSection('SIM Pending', simPending.length, simPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
+    { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
   ], 'dashSim');
   html += buildDashSection('Device Pending', devPending.length, devPending, [
     { label: 'Date', fn: r => fmtDateStr(r.CreationDate) }, { label: 'Order ID', fn: r => r.OrderNum },
     { label: 'Customer', fn: r => r.CustName }, { label: 'Status', fn: r => r.StatusDesc, cls: 'badge-pending' },
+    { label: 'Ledger Bal', fn: r => bal(tallyNameFor(r.CustomerNum)), tdCls: r => balCls(tallyNameFor(r.CustomerNum)) },
   ], 'dashDev');
   content.innerHTML = html;
 }
@@ -3963,7 +3982,8 @@ function buildDashSection(title, count, rows, columns, id) {
       tableHtml += '<tr>' + columns.map(c => {
         const val = c.fn(r);
         const cls = typeof c.cls === 'function' ? c.cls(r) : (c.cls || '');
-        return '<td>' + (cls ? '<span class="badge ' + cls + '">' : '') + e(String(val)) + (cls ? '</span>' : '') + '</td>';
+        const tdCls = typeof c.tdCls === 'function' ? c.tdCls(r) : (c.tdCls || '');
+        return '<td' + (tdCls ? ' class="' + tdCls + '"' : '') + '>' + (cls ? '<span class="badge ' + cls + '">' : '') + e(String(val)) + (cls ? '</span>' : '') + '</td>';
       }).join('') + '</tr>';
     }
     tableHtml += '</tbody></table>';
