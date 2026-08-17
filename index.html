@@ -382,6 +382,7 @@
         <button class="gst-tab" data-dtab="all">All</button>
         <button class="gst-tab" data-dtab="sheet">Sheet</button>
         <button class="gst-tab" data-dtab="models">Models</button>
+        <button class="gst-tab" data-dtab="partners">Partners</button>
       </div>
       <!-- Create sub-tab -->
       <div id="deviceCreateTab" style="display:flex;flex-direction:column;gap:8px">
@@ -465,6 +466,18 @@
         <div style="overflow-x:auto"><table><thead><tr id="modelHeaderRow">
           <th>#</th><th>A</th><th>B</th><th>C</th><th>D (Model)</th><th>E</th><th>F</th><th>G</th><th>H</th><th>I</th><th>J</th><th style="width:120px">Actions</th>
         </tr></thead><tbody id="deviceModelBody"></tbody></table></div>
+      </div>
+      <!-- Partners sub-tab -->
+      <div id="devicePartnersTab" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="partnerFilter" placeholder="Filter by Tally Name..." oninput="renderDevicePartners()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:200px">
+          <button class="btn-sm btn-outline" onclick="addDevicePartnerRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+          <span style="font-size:.75rem;color:#64748b"><span id="partnerCount">0</span> rows</span>
+        </div>
+        <div id="devicePartnerMsg" class="msg"></div>
+        <div style="overflow-x:auto"><table><thead><tr>
+          <th>#</th><th>Customer ID</th><th>Tally Name</th><th>Location</th><th>Date</th><th style="width:120px">Actions</th>
+        </tr></thead><tbody id="devicePartnerBody"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -1827,6 +1840,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('deviceSavedTab').style.display = (tab === 'open' || tab === 'all') ? 'flex' : 'none';
         document.getElementById('deviceSheetTab').style.display = tab === 'sheet' ? 'flex' : 'none';
         document.getElementById('deviceModelsTab').style.display = tab === 'models' ? 'flex' : 'none';
+        document.getElementById('devicePartnersTab').style.display = tab === 'partners' ? 'flex' : 'none';
         if (tab === 'open' || tab === 'all') {
           const from = document.getElementById('dvcDateFrom').value;
           const to = document.getElementById('dvcDateTo').value;
@@ -1834,6 +1848,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (tab === 'sheet') loadDeviceSheetData();
         if (tab === 'models') loadDeviceModels();
+        if (tab === 'partners') loadDevicePartners();
       });
     });
     document.querySelectorAll('#simSubTabs .gst-tab').forEach(t => {
@@ -2988,6 +3003,119 @@ async function deleteModelRow(rowIndex) {
     loadDeviceModels();
   } else {
     showMsg('deviceModelMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+// ── Partners (gid=226040199) ─────────────────────────────────────────
+let partnerData = [];
+let editingPartnerRow = null;
+
+async function loadDevicePartners() {
+  const body = document.getElementById('devicePartnerBody');
+  body.innerHTML = '<tr><td colspan="6" style="color:#999">Loading...</td></tr>';
+  const res = await callScript('getOutstandingData');
+  if (!res?.success) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    return;
+  }
+  partnerData = res.data || [];
+  renderDevicePartners();
+}
+
+function renderDevicePartners() {
+  const filter = (document.getElementById('partnerFilter')?.value || '').trim().toLowerCase();
+  let rows = partnerData;
+  if (filter) rows = rows.filter(r => (r.tallyName || '').toLowerCase().includes(filter));
+  const body = document.getElementById('devicePartnerBody');
+  document.getElementById('partnerCount').textContent = rows.length;
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#999">No data</td></tr>';
+    return;
+  }
+  const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc = v => e(v).replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  let h = '';
+  rows.forEach(r => {
+    const editing = editingPartnerRow === r.rowIndex;
+    const field = (key, val) => editing
+      ? `<td><input type="text" class="partner-input" data-col="${key}" data-row="${r.rowIndex}" value="${esc(val)}" style="width:100%;padding:2px 4px;font-size:.75rem;border:1px solid #d0d5dd;border-radius:4px;box-sizing:border-box;"></td>`
+      : `<td>${e(val)}</td>`;
+    h += '<tr>';
+    h += '<td>' + r.rowIndex + '</td>';
+    h += field('custId', r.custId);
+    h += field('tallyName', r.tallyName);
+    h += field('location', r.location);
+    h += field('date', r.date);
+    if (editing) {
+      h += `<td style="white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="updatePartnerRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Update</button>
+        <button class="btn-sm btn-outline" onclick="editPartnerRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Cancel</button>
+      </td>`;
+    } else {
+      h += `<td style="white-space:nowrap">
+        <button class="btn-sm btn-outline" onclick="editPartnerRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#6366f1;border-color:#6366f1">Edit</button>
+        <button class="btn-sm btn-outline" onclick="deletePartnerRow(${r.rowIndex})" style="margin-left:4px;padding:2px 6px;font-size:.7rem;color:#dc2626;border-color:#dc2626">Delete</button>
+      </td>`;
+    }
+    h += '</tr>';
+  });
+  body.innerHTML = h;
+}
+
+async function addDevicePartnerRow() {
+  const custId = prompt('Enter Customer ID:');
+  if (custId === null) return;
+  const tallyName = prompt('Enter Tally Name:');
+  if (tallyName === null) return;
+  const location = prompt('Enter Location:');
+  if (location === null) return;
+  const res = await callScript('addOutstandingRow', { custId: custId.trim(), tallyName: tallyName.trim(), location: location.trim() });
+  if (res?.success) {
+    showMsg('devicePartnerMsg', '\u2705 Row added', 'success');
+    loadDevicePartners();
+  } else {
+    showMsg('devicePartnerMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+function editPartnerRow(rowIndex) {
+  editingPartnerRow = editingPartnerRow === rowIndex ? null : rowIndex;
+  renderDevicePartners();
+}
+
+async function updatePartnerRow(rowIndex) {
+  const r = partnerData.find(x => x.rowIndex === rowIndex);
+  if (!r) return;
+  const inputs = document.querySelectorAll(`.partner-input[data-row="${rowIndex}"]`);
+  const updates = { rowIndex };
+  inputs.forEach(inp => {
+    const col = inp.dataset.col;
+    if (col) updates[col] = inp.value;
+  });
+  const res = await callScript('updateOutstandingRow', updates);
+  if (res?.success) {
+    editingPartnerRow = null;
+    showMsg('devicePartnerMsg', '\u2705 Row updated', 'success');
+    const row = partnerData.find(x => x.rowIndex === rowIndex);
+    if (row) {
+      ['custId','tallyName','location','date'].forEach(k => {
+        if (updates[k] !== undefined) row[k] = updates[k];
+      });
+    }
+    renderDevicePartners();
+  } else {
+    showMsg('devicePartnerMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
+  }
+}
+
+async function deletePartnerRow(rowIndex) {
+  if (!confirm('Delete row ' + rowIndex + '?')) return;
+  const res = await callScript('deleteOutstandingRow', { rowIndex });
+  if (res?.success) {
+    showMsg('devicePartnerMsg', '\u2705 Row deleted', 'success');
+    loadDevicePartners();
+  } else {
+    showMsg('devicePartnerMsg', '\u274C ' + (res?.error || 'Failed'), 'error');
   }
 }
 

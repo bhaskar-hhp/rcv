@@ -1690,6 +1690,7 @@ function updateOutstandingRowInSheet(data) {
   if (data.custId !== undefined) sheet.getRange(rowIndex, 1).setValue(data.custId);
   if (data.tallyName !== undefined) sheet.getRange(rowIndex, 2).setValue(data.tallyName);
   if (data.location !== undefined) sheet.getRange(rowIndex, 3).setValue(data.location);
+  if (data.date !== undefined) sheet.getRange(rowIndex, 4).setValue(data.date);
   return { success: true };
 }
 
