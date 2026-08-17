@@ -476,7 +476,7 @@
         </div>
         <div id="devicePartnerMsg" class="msg"></div>
         <div style="overflow-x:auto"><table><thead><tr>
-          <th>#</th><th>Customer ID</th><th>Tally Name</th><th>Location</th><th>Date</th><th style="width:120px">Actions</th>
+          <th>#</th><th>Customer ID</th><th>Tally Name</th><th>Location</th><th style="width:120px">Actions</th>
         </tr></thead><tbody id="devicePartnerBody"></tbody></table></div>
       </div>
     </div>
@@ -3012,10 +3012,10 @@ let editingPartnerRow = null;
 
 async function loadDevicePartners() {
   const body = document.getElementById('devicePartnerBody');
-  body.innerHTML = '<tr><td colspan="6" style="color:#999">Loading...</td></tr>';
+  body.innerHTML = '<tr><td colspan="5" style="color:#999">Loading...</td></tr>';
   const res = await callScript('getOutstandingData');
   if (!res?.success) {
-    body.innerHTML = '<tr><td colspan="6" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" style="color:#dc2626">' + (res?.error || 'Failed') + '</td></tr>';
     return;
   }
   partnerData = res.data || [];
@@ -3029,7 +3029,7 @@ function renderDevicePartners() {
   const body = document.getElementById('devicePartnerBody');
   document.getElementById('partnerCount').textContent = rows.length;
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="6" style="color:#999">No data</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" style="color:#999">No data</td></tr>';
     return;
   }
   const e = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -3045,7 +3045,6 @@ function renderDevicePartners() {
     h += field('custId', r.custId);
     h += field('tallyName', r.tallyName);
     h += field('location', r.location);
-    h += field('date', r.date);
     if (editing) {
       h += `<td style="white-space:nowrap">
         <button class="btn-sm btn-outline" onclick="updatePartnerRow(${r.rowIndex})" style="padding:2px 6px;font-size:.7rem;color:#16a34a;border-color:#16a34a">Update</button>
@@ -3098,7 +3097,7 @@ async function updatePartnerRow(rowIndex) {
     showMsg('devicePartnerMsg', '\u2705 Row updated', 'success');
     const row = partnerData.find(x => x.rowIndex === rowIndex);
     if (row) {
-      ['custId','tallyName','location','date'].forEach(k => {
+      ['custId','tallyName','location'].forEach(k => {
         if (updates[k] !== undefined) row[k] = updates[k];
       });
     }
