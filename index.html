@@ -4210,7 +4210,7 @@ async function loadDashboard() {
   msgEl.textContent = 'Loading...';
   content.innerHTML = '';
   const now = new Date();
-  const from = new Date(now.getTime() - 4 * 86400000);
+  const from = new Date(now.getTime() - 15 * 86400000);
   const fromStr = from.getFullYear() + '-' + String(from.getMonth()+1).padStart(2,'0') + '-' + String(from.getDate()).padStart(2,'0') + 'T00:00:00';
   const toStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T23:59:59';
   const [gstRes, simRes, devRes, tallyRes, custMapRes] = await Promise.all([
@@ -4250,7 +4250,7 @@ async function loadDashboard() {
   const devPending = (Array.isArray(devRes?.data) ? devRes.data : []).filter(r =>
     r.StatusDesc === 'Pending For Approval' || r.StatusDesc === 'Pending For Invoice and Dispatch'
   );
-  msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending (last 4 days)';
+  msgEl.textContent = 'RCV: ' + rcvPending.length + ' | SIM: ' + simPending.length + ' | Device: ' + devPending.length + ' pending (last 15 days)';
   msgEl.className = 'msg show msg-success';
   let html = '';
   html += buildDashSection('RCV Pending', rcvPending.length, rcvPending, [
