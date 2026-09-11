@@ -460,6 +460,7 @@
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="text" id="modelFilter" placeholder="Filter by Model name (Col D)..." oninput="filterDeviceModels()" style="font-size:.75rem;padding:4px 8px;border:1px solid #d0d5dd;border-radius:6px;width:250px">
           <button class="btn-sm btn-outline" onclick="addDeviceModelRow()" style="color:#6366f1;border-color:#6366f1">+ Add Row</button>
+    <button class="btn-sm btn-outline" onclick="exportModelsPdf()" style="color:#dc2626;border-color:#dc2626">📄 Download PDF</button>
           <span style="font-size:.75rem;color:#64748b"><span id="modelCount">0</span> rows</span>
         </div>
         <div id="deviceModelMsg" class="msg"></div>
@@ -581,44 +582,41 @@
       <h2>Configuration</h2>
       <div class="setup-grid">
         <div class="field full">
-          <label>Apps Script Web App URL</label>
-          <input id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        </div>
-        <div class="field full">
-          <label>JIO_COOKIES (paste from browser DevTools → Network → copy Cookie header)</label>
-          <textarea id="jioCookies" rows="3" style="width:100%;padding:8px;border:1px solid #d0d5dd;border-radius:6px;font-size:.85rem;font-family:monospace"></textarea>
+          <label>Worker URL (auto-configured)</label>
+          <input id="scriptUrl" value="https://jio-proxy.swiftcom-web.workers.dev/api" readonly style="background:#f9fafb">
         </div>
         <div class="field"><label>JIO_USER_ID</label><input id="jioUserId" placeholder="A00660002825"></div>
         <div class="field"><label>JIO_USERNAME</label><input id="jioUserName" placeholder="Suraj Dhoot"></div>
+        <div class="field"><label>Login User ID</label><input id="loginUserId" placeholder="Jio Login User ID"></div>
+        <div class="field"><label>Login Password</label><input id="loginPassword" type="password" placeholder="Jio Login Password"></div>
         <div class="field"><label>Add Fund Multiplier</label><input id="addFundMult" type="number" step="0.0001" value="1.0435" placeholder="1.0435"></div>
         <div class="field"><label>Other Multiplier</label><input id="otherMult" type="number" step="0.0001" value="1.042" placeholder="1.042"></div>
         <div class="field"><label>Balance (₹)</label><input id="setupBalance" type="number" step="0.01" placeholder="0.00"></div>
         <div class="field full" style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-primary" onclick="saveSetup()">Save Config</button>
-          <button class="btn-outline" onclick="sendSetup()">Push to Apps Script</button>
-          <button class="btn-outline" onclick="testConnection()">Test</button>
+          <button class="btn-outline" onclick="testConnection()">Test Connection</button>
           <button class="btn-outline" onclick="syncBalanceFromJio()" style="color:#16a34a;border-color:#16a34a">Sync Balance from Jio</button>
+          <button class="btn-outline" onclick="refreshCookies()" id="refreshCookiesBtn" style="color:#6366f1;border-color:#6366f1">Refresh Cookies</button>
         </div>
       </div>
       <div id="setupMsg" class="msg"></div>
       <div id="configStatus" class="msg"></div>
       <hr style="margin:16px 0">
-      <h3>Deploy Instructions</h3>
-      <ol style="font-size:.85rem;line-height:1.6;padding-left:20px">
-        <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a></li>
-        <li>Create new project → paste <code>AppsScript.gs</code> content</li>
-        <li>Save → Deploy → New deployment → Web app</li>
-        <li>Execute as: <strong>Me</strong>, Who has access: <strong>Anyone</strong></li>
-        <li>Copy the URL → paste in the field above</li>
-        <li>Click <strong>Push to Apps Script</strong> to send JIO_COOKIES</li>
-      </ol>
+      <h3>Cookie Refresh (Automatic)</h3>
+      <p style="font-size:.85rem;line-height:1.6;color:#667085">
+        Cookies are refreshed automatically every 6 hours via GitHub Actions. 
+        If connection fails, cookies may need manual refresh. 
+        See <code>SETUP-COOKIE-REFRESH.md</code> in the repo.
+      </p>
       </div>
     </div>
   </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 const CONFIG_KEY = 'rcv_jio_config';
-const APP_SCRIPT_DEV = 'https://script.google.com/macros/s/AKfycbwjwu4_idOg6foyo2YqCZee1VqYWfUVPCKdzj9pptLbEE3We6A5RM8Ajr9aYIpotu0/exec';
+const APP_SCRIPT_DEV = 'https://jio-proxy.swiftcom-web.workers.dev/api';
 
 function loadCfg() {
   try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; } catch { return {}; }
@@ -640,6 +638,10 @@ function closeMenu() {
 document.addEventListener('DOMContentLoaded', () => {
   const c = loadCfg();
   document.getElementById('scriptUrl').value = c.scriptUrl || '';
+  if (c.jioUserId) document.getElementById('jioUserId').value = c.jioUserId;
+  if (c.jioUserName) document.getElementById('jioUserName').value = c.jioUserName;
+  if (c.loginUserId) document.getElementById('loginUserId').value = c.loginUserId;
+  if (c.loginPassword) document.getElementById('loginPassword').value = c.loginPassword;
   if (c.addFundMult) document.getElementById('addFundMult').value = c.addFundMult;
   if (c.otherMult) document.getElementById('otherMult').value = c.otherMult;
   if (c.setupBalance) document.getElementById('setupBalance').value = c.setupBalance;
@@ -672,6 +674,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result?.success && result.hasCookies) {
       document.getElementById('jioUserId').value = result.userId || '';
       document.getElementById('jioUserName').value = result.userName || '';
+      if (result.loginUserId) {
+        document.getElementById('loginUserId').value = result.loginUserId;
+        const c = loadCfg(); c.loginUserId = result.loginUserId; saveCfg(c);
+      }
+      if (result.loginPassword) {
+        document.getElementById('loginPassword').value = result.loginPassword;
+        const c = loadCfg(); c.loginPassword = result.loginPassword; saveCfg(c);
+      }
       if (result.addFundMult) {
         document.getElementById('addFundMult').value = result.addFundMult;
         const c = loadCfg();
@@ -738,7 +748,7 @@ async function callScript(action, params) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...params }),
     });
     releaseWakeLock();
@@ -746,49 +756,42 @@ async function callScript(action, params) {
     return await res.json();
   } catch (e) {
     releaseWakeLock();
-    // Apps Script may need CORS workaround — try JSONP fallback for GET
-    if (action === 'getOrders' || action === 'getUser') {
-      return new Promise(resolve => {
-        const c = 'callback_' + Date.now();
-        window[c] = data => { delete window[c]; document.body.removeChild(s); resolve(data); };
-        const s = document.createElement('script');
-        s.src = url + '?action=' + action + (params?.type ? '&type=' + params.type : '') + '&callback=' + c;
-        s.onerror = () => { delete window[c]; document.body.removeChild(s);
-          resolve({ success: false, error: 'Network error' }); };
-        document.body.appendChild(s);
-      });
-    }
     return { success: false, error: e.message };
   }
 }
 
 // ── Setup ────────────────────────────────────────────────────────────
-function saveSetup() {
+async function saveSetup() {
   const c = {
     scriptUrl: document.getElementById('scriptUrl').value.trim(),
-    jioCookies: document.getElementById('jioCookies').value.trim(),
     jioUserId: document.getElementById('jioUserId').value.trim(),
     jioUserName: document.getElementById('jioUserName').value.trim(),
+    loginUserId: document.getElementById('loginUserId').value.trim(),
+    loginPassword: document.getElementById('loginPassword').value.trim(),
     addFundMult: document.getElementById('addFundMult').value.trim(),
     otherMult: document.getElementById('otherMult').value.trim(),
     setupBalance: document.getElementById('setupBalance').value.trim(),
   };
   saveCfg(c);
-  showMsg('setupMsg', 'Config saved locally.', 'success');
-}
 
-async function sendSetup() {
-  const c = loadCfg();
-  const result = await callScript('setup', {
-    cookies: c.jioCookies,
-    userId: c.jioUserId,
-    userName: c.jioUserName,
-    addFundMult: c.addFundMult,
-    otherMult: c.otherMult,
-    balance: c.setupBalance,
-  });
-  showMsg('setupMsg', result?.success ? '✅ Config pushed to Apps Script' : '⚠ ' + (result?.error || 'Check Apps Script deployment'), result?.success ? 'success' : 'error');
-  if (result?.success) loadClosingBalance();
+  try {
+    const result = await callScript('setup', {
+      userId: c.jioUserId,
+      userName: c.jioUserName,
+      loginUserId: c.loginUserId,
+      loginPassword: c.loginPassword,
+      addFundMult: c.addFundMult,
+      otherMult: c.otherMult,
+      balance: c.setupBalance,
+    });
+    if (result?.success) {
+      showMsg('setupMsg', '✅ Config saved locally & pushed to Sheet.', 'success');
+    } else {
+      showMsg('setupMsg', '⚠ Saved locally, push failed: ' + (result?.error || ''), 'error');
+    }
+  } catch (e) {
+    showMsg('setupMsg', '⚠ Saved locally, push failed: ' + e.message, 'error');
+  }
 }
 
 async function testConnection() {
@@ -797,38 +800,58 @@ async function testConnection() {
   if (result?.success) {
     showMsg('setupMsg', '✅ Connected as ' + (result.data?.fullName || result.fullName || 'OK'), 'success');
   } else {
-    showMsg('setupMsg', '⚠ ' + (result?.error || 'No response. Deploy Apps Script first.'), 'error');
+    showMsg('setupMsg', '⚠ ' + (result?.error || 'No response. Check Worker deployment.'), 'error');
   }
 }
 
 async function syncBalanceFromJio() {
-  showMsg('setupMsg', 'Saving & pushing config...', 'success');
-  saveSetup();
-  const cfg = loadCfg();
-  if (!cfg.jioCookies) {
-    showMsg('setupMsg', '⚠ Paste JIO_COOKIES first.', 'error');
-    return;
-  }
-  const push = await callScript('setup', cfg);
-  if (!push?.success) {
-    showMsg('setupMsg', '⚠ Failed to push config to server: ' + (push?.error || ''), 'error');
-    return;
-  }
   showMsg('setupMsg', 'Fetching Jio balance...', 'success');
   const result = await callScript('getJioBalance');
   if (result?.success && result.jioBalance !== undefined) {
     const bal = result.jioBalance;
     document.getElementById('setupBalance').value = bal;
-    const pushResult = await callScript('setup', { ...loadCfg(), balance: String(bal) });
-    if (pushResult?.success) {
-      showMsg('setupMsg', '✅ Balance synced from Jio: \u20B9 ' + Number(bal).toLocaleString('en-IN', {minimumFractionDigits:2}), 'success');
-      loadClosingBalance();
-    } else {
-      showMsg('setupMsg', '⚠ Balance fetched but Config push failed: ' + (pushResult?.error || ''), 'error');
-    }
+    const cfg = loadCfg();
+    cfg.balance = String(bal);
+    saveCfg(cfg);
+    await callScript('setup', { balance: String(bal) });
+    showMsg('setupMsg', '✅ Balance synced from Jio: \u20B9 ' + Number(bal).toLocaleString('en-IN', {minimumFractionDigits:2}), 'success');
+    loadClosingBalance();
   } else {
     showMsg('setupMsg', '⚠ Failed to fetch Jio balance. Check cookies.', 'error');
   }
+}
+
+async function refreshCookies() {
+  const btn = document.getElementById('refreshCookiesBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+  showMsg('setupMsg', 'Triggering cookie refresh via GitHub Actions... this takes ~2 minutes.', 'success');
+  const result = await callScript('refreshCookies');
+  if (result?.success) {
+    showMsg('setupMsg', '✅ ' + result.message, 'success');
+    // Reload config after a delay to pick up new cookies
+    setTimeout(() => {
+      callScript('getConfig').then(r => {
+        if (r?.success && r.hasCookies) showMsg('setupMsg', '✅ Cookies refreshed and loaded. Test connection to verify.', 'success');
+      });
+    }, 30000);
+  } else {
+    showMsg('setupMsg', '⚠ ' + (result?.error || 'Failed to trigger refresh'), 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Refresh Cookies';
+}
+
+async function updateBalanceAfterTx(amount, isAddFund) {
+  const balResult = await callScript('getClosingBalance');
+  const prev = parseFloat(balResult?.closingBal) || 0;
+  const amt = parseFloat(amount) || 0;
+  const newBal = isAddFund ? prev + amt : prev - amt;
+  const cfg = loadCfg();
+  cfg.balance = String(newBal);
+  saveCfg(cfg);
+  await callScript('setup', { balance: String(newBal) });
+  loadClosingBalance();
 }
 
 // ── Retailer Dropdown ──────────────────────────────────────────
@@ -978,6 +1001,7 @@ async function pushNewRow(btn, id) {
     row.orderId = result.orderId;
     renderNewRows();
     showMsg('newOrderMsg', '\u2705 Order ID: ' + result.orderId, 'success');
+    updateBalanceAfterTx(row.amount, row.retailerVal === 'add_fund');
   } else {
     showMsg('newOrderMsg', '\u274C ' + (result?.error || 'Push failed'), 'error');
   }
@@ -993,6 +1017,7 @@ async function pushPrimaryNewRow(btn, id) {
     row.orderId = result.orderId;
     renderNewRows();
     showMsg('newOrderMsg', '\u2705 Primary Order ID: ' + result.orderId, 'success');
+    updateBalanceAfterTx(row.amount, false);
   } else {
     showMsg('newOrderMsg', '\u274C ' + (result?.error || 'Push Primary failed'), 'error');
   }
@@ -1004,16 +1029,21 @@ async function batchPushNew() {
   if (!confirm('Push ' + newSelRows.size + ' order(s) to Jio?')) return;
   const btn = document.getElementById('batchPushNewBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Processing...'; }
+  let totalAmount = 0;
   for (const id of newSelRows) {
     const row = newRows.find(r => r.id === id);
     if (row && row.custNum && row.amount) {
       const result = await callScript('saveOrder', { customerNum: row.custNum, amount: row.amount });
-      if (result?.success && result.orderId) row.orderId = result.orderId;
+      if (result?.success && result.orderId) {
+        row.orderId = result.orderId;
+        totalAmount += parseFloat(row.amount) || 0;
+      }
     }
   }
   if (btn) { btn.disabled = false; btn.innerHTML = 'Push Selected'; }
   renderNewRows();
   showMsg('newOrderMsg', '\u2705 Push complete', 'success');
+  if (totalAmount > 0) updateBalanceAfterTx(totalAmount, false);
 }
 
 async function batchSubmitNew() {
@@ -2057,7 +2087,11 @@ function renderRecoTable() {
 
   if (dateFilter) {
     const parts = dateFilter.split('-');
-    const df = parts[2] + '-' + parts[1] + '-' + parts[0];
+    const mon = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const y = parts[0];
+    const m = parseInt(parts[1]);
+    const d = String(parseInt(parts[2])).padStart(2, '0');
+    const df = d + '-' + mon[m] + '-' + y;
     rows = rows.filter(r => r.date === df);
   }
   if (partnerVal) rows = rows.filter(r => r.partner === partnerVal);
@@ -2940,6 +2974,32 @@ function renderDeviceModels() {
 
 function filterDeviceModels() {
   renderDeviceModels();
+}
+
+function exportModelsPdf() {
+  if (!modelData.length) return;
+  const skipCols = ['colF', 'colG'];
+  const skipHeaders = (modelHeaders || []).filter((h, i) => {
+    const key = ['colA','colB','colC','colD','colE','colF','colG','colH','colI','colJ','colK'][i];
+    return !skipCols.includes(key);
+  });
+  const keys = ['colA','colB','colC','colD','colE','colH','colI','colJ','colK'];
+  const rows = modelData.map(r => keys.map(k => r[k] ?? ''));
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: keys.length > 8 ? 'landscape' : 'portrait' });
+  doc.setFontSize(16);
+  doc.text('JIO Device Models', 14, 15);
+  doc.setFontSize(10);
+  doc.text('Generated: ' + new Date().toLocaleString('en-IN'), 14, 22);
+  doc.autoTable({
+    startY: 27,
+    head: [skipHeaders],
+    body: rows,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [59, 130, 246], fontSize: 10 },
+    margin: { left: 14, right: 14 },
+  });
+  doc.save('device-models.pdf');
 }
 
 async function addDeviceModelRow() {
